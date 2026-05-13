@@ -1,0 +1,32 @@
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+*.egg-info/
+.pytest_cache/
+
+# Environment & secrets — NEVER COMMIT
+.env
+.env.local
+.env.*.local
+*.key
+*.pem
+
+# Local database (contains encrypted API keys)
+data/
+*.db
+*.db-journal
+*.sqlite
+*.sqlite3
+
+# IDE
+.vscode/
+.idea/
+*.swp
+.DS_Store
+
+# Build output
+dist/
+build/
+*.log

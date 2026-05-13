@@ -1,0 +1,428 @@
+/*
+ * PromptLab — styles.css
+ * Complements Tailwind utilities with animations, custom controls, and
+ * component-level polish. Dark-mode-first; no conflicting global resets
+ * (Tailwind Preflight handles box-sizing/margin/padding).
+ */
+
+
+/* ═══════════════════════════════════════════════════════════
+   SCROLLBARS  –  slim dark track, subtle thumb
+═══════════════════════════════════════════════════════════ */
+
+::-webkit-scrollbar        { width: 5px; height: 5px; }
+::-webkit-scrollbar-track  { background: transparent; }
+::-webkit-scrollbar-thumb  { background: #334155; border-radius: 9999px; }
+::-webkit-scrollbar-thumb:hover { background: #475569; }
+
+/* Firefox */
+* { scrollbar-width: thin; scrollbar-color: #334155 transparent; }
+
+
+/* ═══════════════════════════════════════════════════════════
+   RANGE SLIDERS
+   Colored fill on the left of the thumb via the CSS custom
+   property --val (0 %–100 %), updated by setSliderFill() in JS.
+
+   JS call:
+     el.style.setProperty('--val',
+       ((v - min) / (max - min) * 100).toFixed(1) + '%');
+═══════════════════════════════════════════════════════════ */
+
+input[type="range"] {
+  -webkit-appearance: none;
+  appearance: none;
+  height: 4px;
+  border-radius: 9999px;
+  outline: none;
+  cursor: pointer;
+  background: linear-gradient(
+    to right,
+    #6366f1 0%,
+    #6366f1 var(--val, 35%),
+    #1e293b var(--val, 35%),
+    #1e293b 100%
+  );
+}
+
+/* WebKit thumb */
+input[type="range"]::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  background: #fff;
+  cursor: grab;
+  box-shadow: 0 1px 3px rgba(0,0,0,.55);
+  transition: transform .12s ease, box-shadow .12s ease;
+}
+input[type="range"]::-webkit-slider-thumb:hover {
+  transform: scale(1.25);
+  box-shadow: 0 0 0 4px rgba(99,102,241,.3);
+}
+input[type="range"]:active::-webkit-slider-thumb        { cursor: grabbing; }
+input[type="range"]:focus-visible::-webkit-slider-thumb {
+  box-shadow: 0 0 0 3px rgba(99,102,241,.55);
+}
+
+/* Firefox — track, progress bar, thumb */
+input[type="range"]::-moz-range-track {
+  height: 4px;
+  border-radius: 9999px;
+  background: #1e293b;
+}
+input[type="range"]::-moz-range-progress {
+  height: 4px;
+  border-radius: 9999px;
+  background: #6366f1;
+}
+input[type="range"]::-moz-range-thumb {
+  border: none;
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  background: #fff;
+  cursor: grab;
+  box-shadow: 0 1px 3px rgba(0,0,0,.55);
+  transition: box-shadow .12s ease;
+}
+input[type="range"]::-moz-range-thumb:hover {
+  box-shadow: 0 0 0 4px rgba(99,102,241,.3);
+}
+
+/* Compare panel B uses violet instead of indigo */
+#compare-b-temp,
+#compare-b-topp {
+  background: linear-gradient(
+    to right,
+    #7c3aed 0%,
+    #7c3aed var(--val, 35%),
+    #1e293b var(--val, 35%),
+    #1e293b 100%
+  );
+}
+#compare-b-temp::-moz-range-progress,
+#compare-b-topp::-moz-range-progress { background: #7c3aed; }
+
+
+/* ═══════════════════════════════════════════════════════════
+   CHAT MESSAGES  –  fade-in + slide-up on append
+   JS adds class .chat-msg to every message wrapper div.
+═══════════════════════════════════════════════════════════ */
+
+@keyframes msgIn {
+  from { opacity: 0; transform: translateY(10px); }
+  to   { opacity: 1; transform: translateY(0);    }
+}
+
+.chat-msg { animation: msgIn .28s ease-out both; }
+
+
+/* ═══════════════════════════════════════════════════════════
+   CODE BLOCKS  –  complement highlight.js github-dark theme
+═══════════════════════════════════════════════════════════ */
+
+/* Outer <pre> wrapper */
+.prose-bubble pre {
+  margin: .55rem 0;
+  padding: 0;
+  border-radius: .5rem;
+  overflow: hidden;
+  border: 1px solid #30363d;   /* github-dark divider colour */
+  position: relative;
+}
+
+/* Language label rendered from the data-lang attribute.
+   hljs sets this; JS can also set it after highlighting. */
+.prose-bubble pre[data-lang]::before {
+  content: attr(data-lang);
+  display: block;
+  padding: .22rem 1rem;
+  font-size: .62rem;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  color: #8b949e;
+  background: #161b22;
+  text-transform: uppercase;
+  letter-spacing: .07em;
+  border-bottom: 1px solid #30363d;
+}
+
+/* hljs output inside pre */
+.prose-bubble pre code.hljs {
+  padding: .8rem 1rem;
+  font-size: .76rem;
+  line-height: 1.65;
+  display: block;
+  overflow-x: auto;
+}
+
+/* Inline code spans */
+.prose-bubble code:not(pre code) {
+  background: rgba(110,118,129,.14);
+  border: 1px solid rgba(110,118,129,.22);
+  padding: .1em .38em;
+  border-radius: .25rem;
+  font-size: .8em;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  color: #e6edf3;
+}
+
+/* Prose resets for markdown content */
+.prose-bubble p               { margin-bottom: .45rem; }
+.prose-bubble p:last-child    { margin-bottom: 0; }
+.prose-bubble ul,
+.prose-bubble ol              { padding-left: 1.4rem; margin-bottom: .45rem; }
+.prose-bubble li              { margin-bottom: .18rem; }
+.prose-bubble h1,
+.prose-bubble h2,
+.prose-bubble h3              { font-weight: 700; margin: .6rem 0 .3rem; }
+.prose-bubble blockquote      {
+  border-left: 3px solid #334155;
+  padding-left: .75rem;
+  color: #94a3b8;
+  margin: .5rem 0;
+}
+
+
+/* ═══════════════════════════════════════════════════════════
+   PERSONA CARDS  –  scale + indigo glow on hover; ring when active
+═══════════════════════════════════════════════════════════ */
+
+.persona-card {
+  transition: transform .15s ease, box-shadow .15s ease;
+}
+.persona-card:hover {
+  transform: scale(1.02);
+  box-shadow:
+    0 0 0 1px rgba(99,102,241,.35),
+    0 4px 16px rgba(99,102,241,.18);
+}
+.persona-card.active {
+  outline: 2px solid #6366f1 !important;
+  outline-offset: -2px;
+  box-shadow: 0 0 0 4px rgba(99,102,241,.22);
+}
+
+
+/* ═══════════════════════════════════════════════════════════
+   PROVIDER STATUS BADGES
+   CSS classes applied programmatically in refreshProviderCard().
+   Kept separate from Tailwind so the mapping stays in one place.
+═══════════════════════════════════════════════════════════ */
+
+.status-badge {
+  display: inline-flex;
+  align-items: center;
+  padding: 2px 10px;
+  border-radius: 9999px;
+  font-size: 11px;
+  font-weight: 500;
+  line-height: 1.6;
+}
+
+/* "Active Default" → green */
+.status-active-default {
+  background: #14532d;
+  color: #86efac;
+  border: 1px solid rgba(134,239,172,.22);
+}
+
+/* "Configured" → indigo/blue */
+.status-configured {
+  background: #1e1b4b;
+  color: #a5b4fc;
+  border: 1px solid rgba(165,180,252,.22);
+}
+
+/* "Not Configured" → neutral slate */
+.status-not-configured {
+  background: #1e293b;
+  color: #64748b;
+}
+
+/* "Coming Soon" → amber */
+.status-coming-soon {
+  background: #451a03;
+  color: #fcd34d;
+  border: 1px solid rgba(252,211,77,.18);
+}
+
+
+/* ═══════════════════════════════════════════════════════════
+   SETTINGS MODAL  –  backdrop fade + panel slide-scale in
+═══════════════════════════════════════════════════════════ */
+
+@keyframes backdropIn {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+
+@keyframes panelIn {
+  from { opacity: 0; transform: scale(.96) translateY(-8px); }
+  to   { opacity: 1; transform: scale(1)   translateY(0);    }
+}
+
+#settings-modal:not(.hidden) {
+  animation: backdropIn .18s ease-out both;
+}
+
+/* Animate the panel (last direct child div inside the modal) */
+#settings-modal:not(.hidden) > div:last-of-type {
+  animation: panelIn .22s ease-out .04s both;
+}
+
+
+/* ═══════════════════════════════════════════════════════════
+   TOAST NOTIFICATIONS
+   Container fixed top-right; each toast slides in from the
+   right edge.  JS adds class .dismiss just before removal
+   to play the exit animation before the element is removed.
+═══════════════════════════════════════════════════════════ */
+
+@keyframes toastIn {
+  from { opacity: 0; transform: translateX(22px); }
+  to   { opacity: 1; transform: translateX(0);    }
+}
+@keyframes toastOut {
+  from { opacity: 1; transform: translateX(0);    }
+  to   { opacity: 0; transform: translateX(22px); }
+}
+
+#toast-container {
+  position: fixed;
+  top: 1rem;
+  right: 1rem;
+  z-index: 9999;
+  display: flex;
+  flex-direction: column;
+  gap: .4rem;
+  pointer-events: none;
+  max-width: 22rem;
+  width: max-content;
+}
+
+.toast {
+  display: flex;
+  align-items: flex-start;
+  gap: .5rem;
+  padding: .48rem .9rem;
+  border-radius: .5rem;
+  font-size: .78rem;
+  line-height: 1.5;
+  color: #f1f5f9;
+  pointer-events: auto;
+  box-shadow: 0 4px 16px rgba(0,0,0,.45);
+  animation: toastIn .2s ease-out both;
+}
+
+.toast.info    { background: #1e293b; border: 1px solid #334155; }
+.toast.success { background: #14532d; border: 1px solid #166534; }
+.toast.error   { background: #7f1d1d; border: 1px solid #991b1b; }
+.toast.dismiss { animation: toastOut .2s ease-in both; }
+
+.toast-icon { flex-shrink: 0; line-height: 1.5; }
+
+
+/* ═══════════════════════════════════════════════════════════
+   LOADING SPINNER  –  CSS fallback ring
+   (Tailwind's `animate-spin` on the SVG in index.html is the
+   primary spinner; this class is an alternative hook for JS.)
+═══════════════════════════════════════════════════════════ */
+
+@keyframes spin360 { to { transform: rotate(360deg); } }
+
+.spinner-ring {
+  width: 1.1rem;
+  height: 1.1rem;
+  border: 2px solid rgba(255,255,255,.25);
+  border-top-color: #fff;
+  border-radius: 50%;
+  animation: spin360 .65s linear infinite;
+}
+
+
+/* ═══════════════════════════════════════════════════════════
+   SETUP WIZARD BANNER  –  gentle indigo pulse ring
+═══════════════════════════════════════════════════════════ */
+
+@keyframes wizardGlow {
+  0%, 100% { box-shadow: 0 0 0 0   rgba(99,102,241,0);    }
+  50%       { box-shadow: 0 0 0 7px rgba(99,102,241,.22); }
+}
+
+#setup-wizard:not(.hidden) {
+  animation: wizardGlow 2.4s ease-in-out infinite;
+}
+
+
+/* ═══════════════════════════════════════════════════════════
+   PARAMS DRAWER — right-sidebar as a bottom sheet on mobile
+   At ≤ 768 px the sidebar transforms into a slide-up drawer.
+   A backdrop overlay (.drawer-overlay) is created by JS.
+═══════════════════════════════════════════════════════════ */
+
+/* Drawer-open toggle button — hidden on large screens */
+#params-drawer-btn { display: none; }
+
+/* Backdrop overlay — created + destroyed by JS */
+.drawer-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 39;
+  background: rgba(0,0,0,.55);
+  -webkit-backdrop-filter: blur(2px);
+  backdrop-filter: blur(2px);
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity .24s ease;
+}
+.drawer-overlay.active {
+  opacity: 1;
+  pointer-events: auto;
+}
+
+@media (max-width: 768px) {
+
+  /* Show the params drawer toggle button in the top bar */
+  #params-drawer-btn {
+    display: flex;
+    align-items: center;
+    gap: .35rem;
+  }
+
+  /* Convert the right sidebar into a fixed bottom sheet */
+  .params-sidebar {
+    position: fixed !important;
+    inset: auto 0 0 0 !important;
+    z-index: 40;
+    max-height: 72vh;
+    overflow-y: auto;
+    border-top: 1px solid #334155 !important;
+    border-left: none !important;
+    border-radius: 1rem 1rem 0 0;
+    box-shadow: 0 -8px 32px rgba(0,0,0,.65);
+    background: #0f172a;          /* slate-950 */
+    /* start off-screen */
+    transform: translateY(100%);
+    transition: transform .3s cubic-bezier(.4,0,.2,1);
+  }
+
+  /* Drag-handle pill above the drawer content */
+  .params-sidebar::before {
+    content: '';
+    display: block;
+    width: 2.5rem;
+    height: 3px;
+    background: #475569;
+    border-radius: 9999px;
+    margin: .65rem auto .15rem;
+    flex-shrink: 0;
+  }
+
+  .params-sidebar.drawer-open { transform: translateY(0); }
+
+  /* Main grid becomes a normal flex column when narrower than lg */
+  #main-grid {
+    grid-template-columns: unset !important;
+  }
+}

@@ -1,0 +1,1156 @@
+<!DOCTYPE html>
+<html lang="en" class="dark">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>PromptLab — Explore System Prompts, Temperature &amp; Top-P</title>
+
+  <script>
+    tailwind.config = {
+      darkMode: 'class',
+      theme: { extend: {} }
+    }
+  </script>
+  <script src="https://cdn.tailwindcss.com"></script>
+
+  <link rel="stylesheet"
+    href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/github-dark.min.css">
+
+  <link rel="stylesheet" href="/static/styles.css">
+
+  <style>
+    /* scrollbar */
+    ::-webkit-scrollbar { width: 5px; height: 5px; }
+    ::-webkit-scrollbar-track { background: transparent; }
+    ::-webkit-scrollbar-thumb { background: #334155; border-radius: 3px; }
+    ::-webkit-scrollbar-thumb:hover { background: #475569; }
+
+    /* range track */
+    input[type=range] { cursor: pointer; }
+
+    /* prose inside chat bubbles */
+    .prose-bubble p { margin-bottom: .5rem; }
+    .prose-bubble p:last-child { margin-bottom: 0; }
+    .prose-bubble pre { margin: .5rem 0; border-radius: .5rem; overflow-x: auto; }
+    .prose-bubble code:not(pre code) {
+      background: rgba(255,255,255,.08);
+      padding: 1px 5px; border-radius: 3px;
+      font-size: .8em; font-family: ui-monospace, monospace;
+    }
+    .prose-bubble ul, .prose-bubble ol { padding-left: 1.4rem; margin-bottom: .5rem; }
+    .prose-bubble li { margin-bottom: .2rem; }
+    .prose-bubble h1,.prose-bubble h2,.prose-bubble h3 { font-weight:700; margin:.6rem 0 .3rem; }
+
+    /* persona card active ring */
+    .persona-card.active { outline: 2px solid #6366f1; outline-offset: -2px; }
+
+    /* toggle knob transition */
+    #compare-toggle:checked ~ #compare-toggle-track { background-color: #6366f1; }
+    #compare-toggle:checked ~ #compare-toggle-thumb { transform: translateX(20px); }
+
+    /* skeleton shimmer */
+    @keyframes shimmer { 0%{opacity:.5} 50%{opacity:.9} 100%{opacity:.5} }
+    .shimmer { animation: shimmer 1.4s ease-in-out infinite; }
+  </style>
+</head>
+
+<body class="bg-zinc-950 text-slate-100 h-screen overflow-hidden flex flex-col antialiased">
+
+<!-- ═══════════════════════════════════════
+     TOP BAR
+═══════════════════════════════════════ -->
+<header class="h-13 min-h-[52px] bg-slate-900 border-b border-slate-700/60 flex items-center px-4 gap-3 flex-shrink-0 z-10"
+        role="banner">
+
+  <div class="flex items-center gap-2 font-bold text-white select-none whitespace-nowrap">
+    <span aria-hidden="true">🧪</span>
+    <span class="hidden sm:inline">PromptLab</span>
+  </div>
+
+  <div class="flex-1 flex justify-center">
+    <div id="top-provider-indicator"
+         class="flex items-center gap-2 text-sm px-3 py-1 bg-slate-800 rounded-full border border-slate-700"
+         aria-live="polite" aria-label="Active provider status">
+      <span id="provider-status-dot"
+            class="w-2 h-2 rounded-full bg-slate-600 flex-shrink-0 transition-colors duration-300"
+            aria-hidden="true"></span>
+      <span class="text-slate-400 hidden sm:inline">Provider:</span>
+      <span id="active-provider-label" class="text-white font-medium text-xs sm:text-sm">Not configured</span>
+    </div>
+  </div>
+
+  <button id="params-drawer-btn"
+          class="px-3 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 border border-slate-700 text-sm font-medium text-slate-200 transition-colors focus:outline-none focus:ring-2 focus:ring-indigo-500"
+          aria-label="Open parameters panel" aria-controls="params-sidebar" aria-expanded="false">
+    <span aria-hidden="true">🎛️</span>
+    <span class="hidden xs:inline sr-only">Params</span>
+  </button>
+
+  <button id="settings-btn"
+          class="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 border border-slate-700 text-sm font-medium text-slate-200 transition-colors focus:outline-none focus:ring-2 focus:ring-indigo-500"
+          aria-label="Open provider settings" aria-haspopup="dialog">
+    <span aria-hidden="true">⚙️</span>
+    <span class="hidden sm:inline">Settings</span>
+  </button>
+</header>
+
+
+<!-- ═══════════════════════════════════════
+     MAIN 3-COLUMN GRID
+═══════════════════════════════════════ -->
+<div id="main-grid"
+     class="flex-1 overflow-hidden flex flex-col lg:grid lg:overflow-hidden"
+     style="grid-template-columns: 300px 1fr 320px;"
+     role="main">
+
+  <!-- ─────────────────────────────────────
+       LEFT SIDEBAR
+  ───────────────────────────────────── -->
+  <aside class="bg-slate-900 border-b lg:border-b-0 lg:border-r border-slate-700/60
+                overflow-y-auto flex-shrink-0 lg:flex-shrink lg:overflow-y-auto
+                max-h-48 lg:max-h-none flex flex-col"
+         aria-label="Personas and recent sessions">
+
+    <div class="p-4 space-y-5 flex-1">
+
+      <!-- Persona list -->
+      <section aria-labelledby="personas-heading">
+        <h2 id="personas-heading"
+            class="text-[11px] font-semibold text-slate-400 uppercase tracking-wider mb-3">
+          Choose Expert
+        </h2>
+        <div id="persona-list" class="space-y-1.5" role="listbox" aria-label="Personas">
+          <!-- shimmer skeletons -->
+          <div class="shimmer h-14 bg-slate-800 rounded-lg"></div>
+          <div class="shimmer h-14 bg-slate-800 rounded-lg" style="animation-delay:.15s"></div>
+          <div class="shimmer h-14 bg-slate-800 rounded-lg" style="animation-delay:.3s"></div>
+        </div>
+      </section>
+
+      <!-- Recent sessions collapsible -->
+      <section aria-labelledby="sessions-heading">
+        <button id="sessions-toggle-btn"
+                class="w-full flex items-center justify-between text-[11px] font-semibold text-slate-400 uppercase tracking-wider hover:text-slate-200 transition-colors mb-2 focus:outline-none"
+                aria-expanded="true" aria-controls="recent-sessions-list">
+          <span id="sessions-heading">Recent Sessions</span>
+          <span id="sessions-chevron" class="transition-transform duration-200 text-xs" aria-hidden="true">▾</span>
+        </button>
+        <div id="recent-sessions-list" class="space-y-1" role="list" aria-label="Recent sessions">
+          <div class="text-xs text-slate-600 italic px-2 py-1">No sessions yet</div>
+        </div>
+      </section>
+    </div>
+  </aside>
+
+
+  <!-- ─────────────────────────────────────
+       CENTER PANEL
+  ───────────────────────────────────── -->
+  <section class="flex flex-col overflow-hidden bg-zinc-900 min-h-0"
+           aria-label="Chat workspace">
+
+    <!-- Persona banner + compare toggle -->
+    <div class="flex items-center justify-between px-4 py-2.5 bg-slate-800/50 border-b border-slate-700/60 flex-shrink-0 gap-3">
+      <div class="flex items-center gap-2 min-w-0">
+        <span id="selected-persona-icon" class="text-xl flex-shrink-0" aria-hidden="true">💬</span>
+        <span id="selected-persona-name"
+              class="font-semibold text-slate-300 truncate text-sm">
+          Select a persona to begin
+        </span>
+      </div>
+
+      <label class="flex items-center gap-2 cursor-pointer flex-shrink-0" for="compare-toggle">
+        <span class="text-xs text-slate-400 hidden sm:inline select-none">Compare</span>
+        <!-- toggle track+thumb (pure CSS driven by checkbox) -->
+        <div class="relative w-10 h-5 flex-shrink-0">
+          <input type="checkbox" id="compare-toggle"
+                 class="sr-only peer"
+                 role="switch"
+                 aria-label="Toggle compare mode"
+                 aria-checked="false">
+          <div class="absolute inset-0 bg-slate-700 peer-checked:bg-indigo-600 rounded-full transition-colors duration-200"></div>
+          <div class="absolute left-0.5 top-0.5 w-4 h-4 bg-white rounded-full shadow transition-transform duration-200 peer-checked:translate-x-5"></div>
+        </div>
+      </label>
+    </div>
+
+    <!-- Setup wizard banner -->
+    <div id="setup-wizard"
+         class="hidden mx-4 mt-3 p-3 bg-indigo-950 border border-indigo-800/60 rounded-xl flex items-center gap-3 flex-shrink-0"
+         role="status" aria-live="polite">
+      <span class="text-2xl" aria-hidden="true">👋</span>
+      <div class="flex-1 min-w-0">
+        <div class="font-semibold text-indigo-200 text-sm">Welcome to PromptLab!</div>
+        <div class="text-indigo-300/70 text-xs">Add an API key to start chatting</div>
+      </div>
+      <button onclick="openSettings()"
+              class="flex-shrink-0 px-3 py-1.5 bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-semibold rounded-lg transition-colors">
+        Open Settings →
+      </button>
+    </div>
+
+    <!-- ── NORMAL MODE ── -->
+    <div id="normal-mode" class="flex flex-col flex-1 overflow-hidden min-h-0">
+
+      <!-- System prompt collapsible -->
+      <div class="border-b border-slate-700/60 flex-shrink-0">
+        <button id="system-prompt-toggle-btn"
+                class="w-full flex items-center justify-between px-4 py-2 text-[11px] font-semibold text-slate-400 hover:text-slate-200 uppercase tracking-wider transition-colors focus:outline-none"
+                aria-expanded="true" aria-controls="system-prompt-body">
+          <span class="flex items-center gap-2">
+            <span aria-hidden="true">📋</span>
+            System Prompt
+            <span id="prompt-version-badge"
+                  class="hidden px-1.5 py-0.5 bg-indigo-900 text-indigo-300 rounded text-[10px] font-mono normal-case tracking-normal">v1</span>
+          </span>
+          <span id="system-prompt-chevron" class="transition-transform duration-200" aria-hidden="true">▾</span>
+        </button>
+
+        <div id="system-prompt-body" class="px-4 pb-3 pt-1">
+          <textarea id="system-prompt-textarea"
+                    class="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 text-sm text-slate-200 resize-none focus:outline-none focus:ring-1 focus:ring-indigo-500 font-mono placeholder:text-slate-600 transition-colors"
+                    rows="4"
+                    placeholder="System prompt will appear here when you select a persona…"
+                    aria-label="System prompt override for this request"
+                    spellcheck="false"></textarea>
+          <div class="flex items-center justify-between mt-1.5">
+            <p class="text-xs text-slate-600">Editing here overrides the active prompt for this request only.</p>
+            <button id="save-prompt-version-btn"
+                    class="hidden text-xs text-indigo-400 hover:text-indigo-300 transition-colors"
+                    aria-label="Save as new prompt version">
+              Save as new version ↗
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Chat messages -->
+      <div id="chat-messages"
+           class="flex-1 overflow-y-auto px-4 py-4 space-y-5 min-h-0"
+           role="log" aria-label="Conversation" aria-live="polite">
+
+        <div id="chat-empty-state" class="flex flex-col items-center justify-center h-full text-center py-10">
+          <div class="text-5xl mb-4" aria-hidden="true">🧪</div>
+          <h3 class="text-base font-semibold text-slate-300">Ready to experiment?</h3>
+          <p class="text-sm text-slate-500 mt-1 max-w-xs">
+            Select a persona from the sidebar, then type your prompt below.
+          </p>
+        </div>
+      </div>
+
+      <!-- Input area -->
+      <div class="px-4 py-3 border-t border-slate-700/60 bg-slate-900/60 flex-shrink-0">
+        <!-- Preset examples + demo comparison -->
+        <div class="flex gap-2 items-center mb-2">
+          <select id="preset-select"
+                  class="flex-1 bg-slate-800 border border-slate-700 rounded-lg px-3 py-1.5 text-xs text-slate-300 focus:outline-none focus:ring-1 focus:ring-indigo-500 transition-colors"
+                  aria-label="Load a preset example prompt">
+            <option value="">Try a preset example…</option>
+          </select>
+          <button id="demo-compare-btn"
+                  class="flex-shrink-0 px-3 py-1.5 bg-violet-900/60 hover:bg-violet-800/80 border border-violet-700/60 text-violet-300 text-xs font-medium rounded-lg transition-colors"
+                  title="Auto-fill Compare mode with a temperature contrast (0.2 vs 1.5)"
+                  aria-label="Run demo temperature comparison">
+            🔬 Demo Compare
+          </button>
+        </div>
+        <div class="flex gap-2 items-end">
+          <textarea id="user-prompt"
+                    class="flex-1 bg-slate-800 border border-slate-700 focus:border-indigo-500 rounded-xl px-4 py-2.5 text-sm text-slate-100 resize-none placeholder:text-slate-500 focus:outline-none focus:ring-1 focus:ring-indigo-500/50 transition-colors min-h-[40px] max-h-40"
+                    placeholder="Type your prompt… (Enter to send, Shift+Enter for newline)"
+                    rows="1"
+                    aria-label="User message"
+                    aria-required="true"></textarea>
+
+          <div id="loading-spinner"
+               class="hidden w-10 h-10 rounded-xl bg-indigo-700 flex-shrink-0 flex items-center justify-center"
+               role="status" aria-label="Waiting for response">
+            <svg class="animate-spin w-5 h-5 text-white" xmlns="http://www.w3.org/2000/svg"
+                 fill="none" viewBox="0 0 24 24" aria-hidden="true">
+              <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"/>
+              <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"/>
+            </svg>
+          </div>
+
+          <button id="send-btn"
+                  class="flex-shrink-0 px-5 py-2.5 bg-indigo-600 hover:bg-indigo-500 disabled:bg-slate-700 disabled:text-slate-500 disabled:cursor-not-allowed text-white font-semibold rounded-xl transition-colors text-sm"
+                  disabled
+                  aria-label="Send message">
+            Send
+          </button>
+        </div>
+        <div class="flex justify-between items-center mt-1.5 px-1">
+          <p class="text-[11px] text-slate-600">Shift+Enter for newline</p>
+          <p id="token-estimate" class="text-[11px] text-slate-600" aria-live="polite"></p>
+        </div>
+      </div>
+    </div><!-- /#normal-mode -->
+
+
+    <!-- ── COMPARE MODE ── -->
+    <div id="compare-mode" class="hidden flex-1 flex-col overflow-hidden min-h-0">
+
+      <div class="flex-1 grid grid-cols-2 overflow-hidden divide-x divide-slate-700/60 min-h-0">
+
+        <!-- Config A -->
+        <div id="compare-panel-a" class="flex flex-col overflow-hidden min-h-0">
+          <div class="px-4 py-2 bg-indigo-950/40 border-b border-slate-700/60 flex-shrink-0">
+            <span class="text-xs font-bold text-indigo-400 uppercase tracking-wider">Config A</span>
+          </div>
+
+          <div class="px-3 py-2 bg-slate-800/30 border-b border-slate-700/60 flex-shrink-0 grid grid-cols-2 gap-2">
+            <div>
+              <label class="block text-[10px] text-slate-500 mb-0.5" for="compare-a-provider">Provider</label>
+              <select id="compare-a-provider"
+                      class="w-full bg-slate-800 border border-slate-700 rounded px-2 py-1 text-slate-200 text-xs focus:outline-none focus:ring-1 focus:ring-indigo-500"
+                      aria-label="Provider for config A">
+                <option value="">Select…</option>
+              </select>
+            </div>
+            <div>
+              <label class="block text-[10px] text-slate-500 mb-0.5" for="compare-a-model">Model</label>
+              <select id="compare-a-model"
+                      class="w-full bg-slate-800 border border-slate-700 rounded px-2 py-1 text-slate-200 text-xs focus:outline-none focus:ring-1 focus:ring-indigo-500"
+                      aria-label="Model for config A">
+                <option value="">—</option>
+              </select>
+            </div>
+            <div id="compare-a-temp-item">
+              <label class="block text-[10px] text-slate-500 mb-0.5" for="compare-a-temp">
+                Temp <span id="compare-a-temp-val" class="text-slate-300 font-mono">0.70</span>
+              </label>
+              <input type="range" id="compare-a-temp" min="0" max="2" step="0.05" value="0.7"
+                     class="w-full accent-indigo-500" aria-label="Temperature A">
+            </div>
+            <div id="compare-a-topp-item">
+              <label class="block text-[10px] text-slate-500 mb-0.5" for="compare-a-topp">
+                Top-P <span id="compare-a-topp-val" class="text-slate-300 font-mono">0.90</span>
+              </label>
+              <input type="range" id="compare-a-topp" min="0" max="1" step="0.05" value="0.9"
+                     class="w-full accent-indigo-500" aria-label="Top-P A">
+            </div>
+            <div id="compare-a-reasoning-note"
+                 class="hidden col-span-2 px-2 py-1.5 bg-amber-950/50 border border-amber-800/40 rounded text-[10px] text-amber-200/70"
+                 role="note">
+              Sampling not available — this model controls temperature internally.
+            </div>
+          </div>
+
+          <div id="compare-response-a"
+               class="flex-1 overflow-y-auto px-4 py-3 text-sm text-slate-200 prose-bubble min-h-0"
+               role="log" aria-label="Response A" aria-live="polite">
+            <p class="text-slate-600 text-xs italic">Response A will appear here…</p>
+          </div>
+          <div id="compare-meta-a"
+               class="hidden px-4 py-2 border-t border-slate-700/60 text-[11px] text-slate-500 flex-shrink-0"
+               aria-live="polite"></div>
+        </div><!-- /#compare-panel-a -->
+
+        <!-- Config B -->
+        <div id="compare-panel-b" class="flex flex-col overflow-hidden min-h-0">
+          <div class="px-4 py-2 bg-violet-950/40 border-b border-slate-700/60 flex-shrink-0">
+            <span class="text-xs font-bold text-violet-400 uppercase tracking-wider">Config B</span>
+          </div>
+
+          <div class="px-3 py-2 bg-slate-800/30 border-b border-slate-700/60 flex-shrink-0 grid grid-cols-2 gap-2">
+            <div>
+              <label class="block text-[10px] text-slate-500 mb-0.5" for="compare-b-provider">Provider</label>
+              <select id="compare-b-provider"
+                      class="w-full bg-slate-800 border border-slate-700 rounded px-2 py-1 text-slate-200 text-xs focus:outline-none focus:ring-1 focus:ring-violet-500"
+                      aria-label="Provider for config B">
+                <option value="">Select…</option>
+              </select>
+            </div>
+            <div>
+              <label class="block text-[10px] text-slate-500 mb-0.5" for="compare-b-model">Model</label>
+              <select id="compare-b-model"
+                      class="w-full bg-slate-800 border border-slate-700 rounded px-2 py-1 text-slate-200 text-xs focus:outline-none focus:ring-1 focus:ring-violet-500"
+                      aria-label="Model for config B">
+                <option value="">—</option>
+              </select>
+            </div>
+            <div id="compare-b-temp-item">
+              <label class="block text-[10px] text-slate-500 mb-0.5" for="compare-b-temp">
+                Temp <span id="compare-b-temp-val" class="text-slate-300 font-mono">0.70</span>
+              </label>
+              <input type="range" id="compare-b-temp" min="0" max="2" step="0.05" value="0.7"
+                     class="w-full accent-violet-500" aria-label="Temperature B">
+            </div>
+            <div id="compare-b-topp-item">
+              <label class="block text-[10px] text-slate-500 mb-0.5" for="compare-b-topp">
+                Top-P <span id="compare-b-topp-val" class="text-slate-300 font-mono">0.90</span>
+              </label>
+              <input type="range" id="compare-b-topp" min="0" max="1" step="0.05" value="0.9"
+                     class="w-full accent-violet-500" aria-label="Top-P B">
+            </div>
+            <div id="compare-b-reasoning-note"
+                 class="hidden col-span-2 px-2 py-1.5 bg-amber-950/50 border border-amber-800/40 rounded text-[10px] text-amber-200/70"
+                 role="note">
+              Sampling not available — this model controls temperature internally.
+            </div>
+          </div>
+
+          <div id="compare-response-b"
+               class="flex-1 overflow-y-auto px-4 py-3 text-sm text-slate-200 prose-bubble min-h-0"
+               role="log" aria-label="Response B" aria-live="polite">
+            <p class="text-slate-600 text-xs italic">Response B will appear here…</p>
+          </div>
+          <div id="compare-meta-b"
+               class="hidden px-4 py-2 border-t border-slate-700/60 text-[11px] text-slate-500 flex-shrink-0"
+               aria-live="polite"></div>
+        </div><!-- /#compare-panel-b -->
+      </div>
+
+      <!-- Multi-provider education note -->
+      <div id="compare-provider-note"
+           class="hidden mx-4 mb-1 px-3 py-2 bg-indigo-950/60 border border-indigo-800/40 rounded-lg flex items-start gap-2 flex-shrink-0"
+           role="note">
+        <span class="text-indigo-400 text-sm flex-shrink-0 mt-0.5" aria-hidden="true">💡</span>
+        <p class="text-[11px] text-indigo-300/80 leading-relaxed">
+          Multiple providers configured — try selecting different providers in panels A and B to compare models head-to-head!
+        </p>
+      </div>
+
+      <!-- Shared compare input -->
+      <div class="px-4 py-3 border-t border-slate-700/60 bg-slate-900/60 flex-shrink-0">
+        <div class="flex gap-2 items-end">
+          <textarea id="compare-prompt"
+                    class="flex-1 bg-slate-800 border border-slate-700 focus:border-violet-500 rounded-xl px-4 py-2.5 text-sm text-slate-100 resize-none placeholder:text-slate-500 focus:outline-none focus:ring-1 focus:ring-violet-500/50 transition-colors min-h-[40px] max-h-32"
+                    placeholder="Type a prompt to run against both configurations…"
+                    rows="2"
+                    aria-label="Prompt for comparison"></textarea>
+
+          <div id="compare-spinner"
+               class="hidden w-10 h-10 rounded-xl bg-violet-700 flex-shrink-0 flex items-center justify-center"
+               role="status" aria-label="Running comparison">
+            <svg class="animate-spin w-5 h-5 text-white" xmlns="http://www.w3.org/2000/svg"
+                 fill="none" viewBox="0 0 24 24" aria-hidden="true">
+              <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"/>
+              <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"/>
+            </svg>
+          </div>
+
+          <button id="compare-send-btn"
+                  class="flex-shrink-0 px-4 py-2.5 bg-violet-600 hover:bg-violet-500 disabled:bg-slate-700 disabled:text-slate-500 disabled:cursor-not-allowed text-white font-semibold rounded-xl transition-colors text-sm"
+                  aria-label="Run comparison">
+            Compare
+          </button>
+        </div>
+      </div>
+    </div><!-- /#compare-mode -->
+  </section><!-- /center panel -->
+
+
+  <!-- ─────────────────────────────────────
+       RIGHT SIDEBAR — Parameters
+  ───────────────────────────────────── -->
+  <aside id="params-sidebar"
+         class="params-sidebar bg-slate-900 border-t lg:border-t-0 lg:border-l border-slate-700/60
+                overflow-y-auto p-4 space-y-5 flex-shrink-0 lg:flex-shrink"
+         aria-label="Generation parameters">
+
+    <h2 class="text-[11px] font-semibold text-slate-400 uppercase tracking-wider">Parameters</h2>
+
+    <!-- Provider -->
+    <div class="space-y-1.5">
+      <label for="provider-select" class="block text-xs font-medium text-slate-400">Provider</label>
+      <select id="provider-select"
+              class="w-full bg-slate-800 border border-slate-700 rounded-lg px-3 py-2 text-sm text-slate-200 focus:outline-none focus:ring-1 focus:ring-indigo-500 transition-colors"
+              aria-label="LLM provider">
+        <option value="">No providers configured</option>
+      </select>
+    </div>
+
+    <!-- Model -->
+    <div class="space-y-1.5">
+      <label for="model-select" class="block text-xs font-medium text-slate-400">Model</label>
+      <select id="model-select"
+              class="w-full bg-slate-800 border border-slate-700 rounded-lg px-3 py-2 text-sm text-slate-200 focus:outline-none focus:ring-1 focus:ring-indigo-500 transition-colors"
+              aria-label="Model">
+        <option value="">Select a provider first</option>
+      </select>
+    </div>
+
+    <!-- Temperature -->
+    <div id="sidebar-temp-section" class="space-y-2">
+      <div class="flex items-center justify-between">
+        <label for="temperature-slider" class="text-xs font-medium text-slate-400">Temperature</label>
+        <span id="temperature-value"
+              class="text-sm font-mono font-semibold text-white tabular-nums"
+              aria-live="polite">0.70</span>
+      </div>
+      <input type="range" id="temperature-slider"
+             min="0" max="2" step="0.05" value="0.7"
+             class="w-full accent-indigo-500"
+             aria-label="Temperature (0 to 2)"
+             aria-valuemin="0" aria-valuemax="2" aria-valuenow="0.7">
+      <div class="flex justify-between text-[10px] text-slate-600 select-none" aria-hidden="true">
+        <span>0.0</span><span>0.5</span><span>1.0</span><span>1.5</span><span>2.0</span>
+      </div>
+      <div id="temperature-label"
+           class="text-center px-2 py-1 rounded text-xs font-medium bg-emerald-900/50 text-emerald-300 transition-all duration-200"
+           aria-live="polite">
+        Balanced
+      </div>
+    </div>
+
+    <!-- Top-P -->
+    <div id="sidebar-topp-section" class="space-y-2">
+      <div class="flex items-center justify-between">
+        <label for="top-p-slider" class="text-xs font-medium text-slate-400">Top-P</label>
+        <span id="top-p-value"
+              class="text-sm font-mono font-semibold text-white tabular-nums"
+              aria-live="polite">0.90</span>
+      </div>
+      <input type="range" id="top-p-slider"
+             min="0" max="1" step="0.05" value="0.9"
+             class="w-full accent-indigo-500"
+             aria-label="Top-P nucleus sampling (0 to 1)"
+             aria-valuemin="0" aria-valuemax="1" aria-valuenow="0.9">
+      <div class="flex justify-between text-[10px] text-slate-600 select-none" aria-hidden="true">
+        <span>0.0</span><span>0.25</span><span>0.5</span><span>0.75</span><span>1.0</span>
+      </div>
+    </div>
+
+    <!-- Reasoning model notice (shown when temp/top-p are hidden) -->
+    <div id="reasoning-model-note"
+         class="hidden p-3 bg-amber-950/50 border border-amber-800/40 rounded-lg"
+         role="note">
+      <p class="text-[11px] font-semibold text-amber-300 mb-1">Sampling not available</p>
+      <p class="text-[11px] text-amber-200/70 leading-relaxed">
+        This model controls its own token sampling internally.
+        Temperature and Top-P are not supported and are not sent to the API.
+      </p>
+    </div>
+
+    <!-- Max Tokens -->
+    <div class="space-y-1.5">
+      <label for="max-tokens-input" class="block text-xs font-medium text-slate-400">Max Tokens</label>
+      <input type="number" id="max-tokens-input"
+             min="64" max="8192" step="64" value="1024"
+             class="w-full bg-slate-800 border border-slate-700 rounded-lg px-3 py-2 text-sm text-slate-200 focus:outline-none focus:ring-1 focus:ring-indigo-500 transition-colors"
+             aria-label="Maximum tokens in response"
+             aria-describedby="max-tokens-hint">
+      <p id="max-tokens-hint" class="text-[11px] text-slate-600">Range: 64–8192</p>
+    </div>
+
+    <!-- Reset -->
+    <button id="reset-params-btn"
+            class="w-full px-3 py-2 bg-slate-800 hover:bg-slate-700 border border-slate-700 rounded-lg text-xs font-medium text-slate-300 transition-colors"
+            aria-label="Reset parameters to persona defaults">
+      ↺ Reset to Persona Defaults
+    </button>
+
+    <!-- Live explanation: structured two-section panel (updated by syncExplanation in app.js) -->
+    <div class="space-y-2" role="note" aria-label="Parameter effect explanation">
+      <!-- Temperature -->
+      <div class="p-3 bg-slate-800 rounded-lg border border-slate-700/60">
+        <div class="flex items-center justify-between mb-1">
+          <p class="text-[10px] font-semibold text-slate-500 uppercase tracking-wider">Temperature</p>
+          <span id="temp-explain-label"
+                class="text-[10px] px-1.5 py-0.5 rounded font-semibold bg-emerald-900/50 text-emerald-300"
+                aria-live="polite">Balanced</span>
+        </div>
+        <p id="temp-explain-body"
+           class="text-[11px] text-slate-400 leading-relaxed mb-1"
+           aria-live="polite">
+          Controls how randomly the model samples tokens.
+        </p>
+        <p id="temp-explain-ideal"
+           class="text-[10px] text-slate-600 italic"
+           aria-live="polite"></p>
+      </div>
+      <!-- Top-P -->
+      <div class="p-3 bg-slate-800 rounded-lg border border-slate-700/60">
+        <div class="flex items-center justify-between mb-1">
+          <p class="text-[10px] font-semibold text-slate-500 uppercase tracking-wider">Top-P</p>
+          <span id="topp-explain-label"
+                class="text-[10px] px-1.5 py-0.5 rounded font-semibold bg-slate-700 text-slate-300"
+                aria-live="polite">Full vocab</span>
+        </div>
+        <p id="topp-explain-body"
+           class="text-[11px] text-slate-400 leading-relaxed"
+           aria-live="polite">
+          Limits which tokens are considered each step.
+        </p>
+      </div>
+    </div>
+
+    <div class="border-t border-slate-700/60 pt-2">
+      <p class="text-[10px] text-slate-600 text-center">
+        Select a persona to load its defaults
+      </p>
+    </div>
+  </aside>
+
+</div><!-- /#main-grid -->
+
+
+<!-- ═══════════════════════════════════════
+     PROVIDER SETTINGS MODAL
+═══════════════════════════════════════ -->
+<div id="settings-modal"
+     class="hidden fixed inset-0 z-50 flex items-center justify-center p-4"
+     role="dialog" aria-modal="true" aria-labelledby="settings-modal-title">
+
+  <!-- Backdrop -->
+  <div class="absolute inset-0 bg-black/70 backdrop-blur-sm"
+       onclick="closeSettings()" aria-hidden="true"></div>
+
+  <!-- Panel -->
+  <div class="relative bg-slate-900 rounded-2xl border border-slate-700/60 w-full max-w-xl max-h-[90vh] flex flex-col shadow-2xl">
+
+    <!-- Modal header -->
+    <div class="flex items-center justify-between px-6 py-4 border-b border-slate-700/60 flex-shrink-0">
+      <h2 id="settings-modal-title" class="text-base font-bold text-white">AI Provider Settings</h2>
+      <button onclick="closeSettings()"
+              class="text-slate-400 hover:text-white transition-colors p-1.5 rounded-lg hover:bg-slate-700"
+              aria-label="Close settings">
+        <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" viewBox="0 0 20 20"
+             fill="currentColor" aria-hidden="true">
+          <path fill-rule="evenodd"
+                d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z"
+                clip-rule="evenodd"/>
+        </svg>
+      </button>
+    </div>
+
+    <!-- Modal body -->
+    <div class="flex-1 overflow-y-auto px-6 py-4 space-y-4">
+
+      <!-- ── OpenAI card ── -->
+      <div class="bg-slate-800 rounded-xl border border-slate-700/60 p-4 space-y-3"
+           data-provider="openai">
+        <div class="flex items-center justify-between">
+          <div class="flex items-center gap-2.5">
+            <span class="text-lg" aria-hidden="true">🤖</span>
+            <span class="font-semibold text-white">OpenAI</span>
+          </div>
+          <span id="openai-status-badge"
+                class="px-2 py-0.5 rounded-full text-[11px] font-medium bg-slate-700 text-slate-400">
+            Not Configured
+          </span>
+        </div>
+
+        <div class="space-y-1.5">
+          <label for="openai-key-input" class="block text-xs text-slate-400">API Key</label>
+          <div class="flex gap-2">
+            <input type="password" id="openai-key-input"
+                   class="flex-1 bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 text-sm text-slate-200 placeholder:text-slate-600 focus:outline-none focus:ring-1 focus:ring-indigo-500"
+                   placeholder="sk-…"
+                   aria-label="OpenAI API key"
+                   autocomplete="off" spellcheck="false">
+            <button id="openai-save-btn"
+                    class="px-4 py-2 bg-indigo-600 hover:bg-indigo-500 text-white text-sm font-medium rounded-lg transition-colors"
+                    aria-label="Save OpenAI API key">
+              Save
+            </button>
+          </div>
+        </div>
+
+        <div class="space-y-1.5">
+          <label for="openai-model-select" class="block text-xs text-slate-400">Default Model</label>
+          <select id="openai-model-select"
+                  class="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 text-sm text-slate-200 focus:outline-none focus:ring-1 focus:ring-indigo-500"
+                  aria-label="Default model for OpenAI">
+            <option value="gpt-5.5">gpt-5.5</option>
+            <option value="gpt-5.5-mini">gpt-5.5-mini</option>
+            <option value="gpt-4.1">gpt-4.1</option>
+            <option value="gpt-4.1-mini">gpt-4.1-mini</option>
+            <option value="gpt-4.1-nano">gpt-4.1-nano</option>
+            <option value="gpt-4o">gpt-4o</option>
+            <option value="o3-mini">o3-mini</option>
+          </select>
+        </div>
+
+        <div class="flex gap-2 flex-wrap">
+          <button id="openai-test-btn" disabled
+                  class="px-3 py-1.5 bg-slate-700 hover:bg-slate-600 disabled:opacity-40 disabled:cursor-not-allowed text-slate-300 text-xs font-medium rounded-lg transition-colors"
+                  aria-label="Test OpenAI connection">
+            🔌 Test Connection
+          </button>
+          <button id="openai-default-btn" disabled
+                  class="px-3 py-1.5 bg-slate-700 hover:bg-slate-600 disabled:opacity-40 disabled:cursor-not-allowed text-slate-300 text-xs font-medium rounded-lg transition-colors"
+                  aria-label="Set OpenAI as default">
+            ⭐ Set as Default
+          </button>
+          <button id="openai-remove-btn"
+                  class="hidden px-3 py-1.5 bg-red-950 hover:bg-red-900 text-red-400 text-xs font-medium rounded-lg transition-colors border border-red-900/60"
+                  aria-label="Remove OpenAI key">
+            🗑 Remove Key
+          </button>
+        </div>
+        <div id="openai-test-result"
+             class="hidden text-xs rounded-lg px-3 py-2"
+             role="status" aria-live="polite"></div>
+      </div><!-- /openai card -->
+
+      <!-- ── Anthropic card (stub) ── -->
+      <div class="bg-slate-800 rounded-xl border border-slate-700/60 p-4 space-y-3"
+           data-provider="anthropic">
+        <div class="flex items-center justify-between">
+          <div class="flex items-center gap-2.5">
+            <span class="text-lg" aria-hidden="true">🧠</span>
+            <span class="font-semibold text-white">Anthropic</span>
+          </div>
+          <span id="anthropic-status-badge"
+                class="px-2 py-0.5 rounded-full text-[11px] font-medium bg-amber-950 text-amber-400">
+            Coming Soon
+          </span>
+        </div>
+
+        <div class="flex items-start gap-2 px-3 py-2.5 bg-yellow-950/50 border border-yellow-800/40 rounded-lg"
+             role="note">
+          <span class="text-yellow-400 flex-shrink-0 mt-0.5" aria-hidden="true">🚧</span>
+          <p class="text-xs text-yellow-300/80 leading-relaxed">
+            Stub implementation — community contribution welcome!
+            See <code class="text-yellow-200 font-mono text-[11px]">app/providers/anthropic_provider.py</code>
+          </p>
+        </div>
+
+        <div class="space-y-1.5 opacity-50">
+          <label for="anthropic-key-input" class="block text-xs text-slate-400">API Key</label>
+          <div class="flex gap-2">
+            <input type="password" id="anthropic-key-input"
+                   class="flex-1 bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 text-sm text-slate-500 placeholder:text-slate-700 focus:outline-none cursor-not-allowed"
+                   placeholder="sk-ant-…"
+                   aria-label="Anthropic API key (not yet implemented)"
+                   autocomplete="off" disabled>
+            <button disabled
+                    class="px-4 py-2 bg-slate-700 text-slate-600 text-sm font-medium rounded-lg cursor-not-allowed"
+                    aria-label="Not available">Save</button>
+          </div>
+        </div>
+
+        <div class="space-y-1.5 opacity-50">
+          <label for="anthropic-model-select" class="block text-xs text-slate-400">Default Model</label>
+          <select id="anthropic-model-select"
+                  class="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 text-sm text-slate-500 focus:outline-none cursor-not-allowed"
+                  aria-label="Default model for Anthropic" disabled>
+            <option value="claude-sonnet-4-5">claude-sonnet-4-5</option>
+            <option value="claude-opus-4-7">claude-opus-4-7</option>
+            <option value="claude-haiku-4-5">claude-haiku-4-5</option>
+          </select>
+        </div>
+      </div><!-- /anthropic card -->
+
+      <!-- ── HuggingFace card (stub) ── -->
+      <div class="bg-slate-800 rounded-xl border border-slate-700/60 p-4 space-y-3"
+           data-provider="huggingface">
+        <div class="flex items-center justify-between">
+          <div class="flex items-center gap-2.5">
+            <span class="text-lg" aria-hidden="true">🤗</span>
+            <span class="font-semibold text-white">Hugging Face</span>
+          </div>
+          <span id="huggingface-status-badge"
+                class="px-2 py-0.5 rounded-full text-[11px] font-medium bg-amber-950 text-amber-400">
+            Coming Soon
+          </span>
+        </div>
+
+        <div class="flex items-start gap-2 px-3 py-2.5 bg-yellow-950/50 border border-yellow-800/40 rounded-lg"
+             role="note">
+          <span class="text-yellow-400 flex-shrink-0 mt-0.5" aria-hidden="true">🚧</span>
+          <p class="text-xs text-yellow-300/80 leading-relaxed">
+            Stub implementation — community contribution welcome!
+            See <code class="text-yellow-200 font-mono text-[11px]">app/providers/huggingface_provider.py</code>
+          </p>
+        </div>
+
+        <div class="space-y-1.5 opacity-50">
+          <label for="huggingface-key-input" class="block text-xs text-slate-400">API Token</label>
+          <div class="flex gap-2">
+            <input type="password" id="huggingface-key-input"
+                   class="flex-1 bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 text-sm text-slate-500 placeholder:text-slate-700 focus:outline-none cursor-not-allowed"
+                   placeholder="hf_…"
+                   aria-label="HuggingFace token (not yet implemented)"
+                   autocomplete="off" disabled>
+            <button disabled
+                    class="px-4 py-2 bg-slate-700 text-slate-600 text-sm font-medium rounded-lg cursor-not-allowed"
+                    aria-label="Not available">Save</button>
+          </div>
+        </div>
+
+        <div class="space-y-1.5 opacity-50">
+          <label for="huggingface-model-select" class="block text-xs text-slate-400">Default Model</label>
+          <select id="huggingface-model-select"
+                  class="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 text-sm text-slate-500 focus:outline-none cursor-not-allowed"
+                  aria-label="Default model for Hugging Face" disabled>
+            <option value="meta-llama/Llama-3.1-8B-Instruct">meta-llama/Llama-3.1-8B-Instruct</option>
+            <option value="mistralai/Mistral-7B-Instruct-v0.3">mistralai/Mistral-7B-Instruct-v0.3</option>
+            <option value="google/gemma-2-9b-it">google/gemma-2-9b-it</option>
+          </select>
+        </div>
+      </div><!-- /huggingface card -->
+
+    </div><!-- /modal body -->
+
+    <!-- Modal footer -->
+    <div class="px-6 py-3 border-t border-slate-700/60 flex items-center justify-between bg-slate-800/40 rounded-b-2xl flex-shrink-0">
+      <div class="flex items-center gap-2 text-xs" aria-live="polite">
+        <span id="modal-provider-dot" class="w-2 h-2 rounded-full bg-slate-600" aria-hidden="true"></span>
+        <span class="text-slate-500">Active:</span>
+        <span id="modal-active-provider" class="text-slate-200 font-medium">None</span>
+      </div>
+      <button onclick="closeSettings()"
+              class="px-4 py-1.5 bg-slate-700 hover:bg-slate-600 text-slate-200 text-sm font-medium rounded-lg transition-colors">
+        Done
+      </button>
+    </div>
+  </div>
+</div><!-- /#settings-modal -->
+
+
+<!-- ═══════════════════════════════════════
+     EXTERNAL LIBRARIES
+═══════════════════════════════════════ -->
+<script src="https://cdn.jsdelivr.net/npm/dompurify@3.0.6/dist/purify.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/highlight.min.js"></script>
+
+
+<!-- ═══════════════════════════════════════
+     INLINE UI SCRIPT (no API calls)
+═══════════════════════════════════════ -->
+<script>
+// ── Modal ────────────────────────────────────────────────────────────────────
+function openSettings() {
+  document.getElementById('settings-modal').classList.remove('hidden');
+  document.body.style.overflow = 'hidden';
+}
+function closeSettings() {
+  document.getElementById('settings-modal').classList.add('hidden');
+  document.body.style.overflow = '';
+}
+document.getElementById('settings-btn').addEventListener('click', openSettings);
+document.addEventListener('keydown', e => { if (e.key === 'Escape') closeSettings(); });
+
+// ── Compare toggle ────────────────────────────────────────────────────────────
+const compareToggle = document.getElementById('compare-toggle');
+const normalMode    = document.getElementById('normal-mode');
+const compareMode   = document.getElementById('compare-mode');
+
+compareToggle.addEventListener('change', () => {
+  const on = compareToggle.checked;
+  compareToggle.setAttribute('aria-checked', String(on));
+  normalMode.style.display  = on ? 'none' : '';
+  compareMode.style.display = on ? 'flex' : '';
+  compareMode.style.flexDirection = 'column';
+});
+
+// ── Collapsible: recent sessions ──────────────────────────────────────────────
+const sessionsToggleBtn   = document.getElementById('sessions-toggle-btn');
+const recentSessionsList  = document.getElementById('recent-sessions-list');
+const sessionsChevron     = document.getElementById('sessions-chevron');
+sessionsToggleBtn.addEventListener('click', () => {
+  const open = sessionsToggleBtn.getAttribute('aria-expanded') === 'true';
+  sessionsToggleBtn.setAttribute('aria-expanded', String(!open));
+  recentSessionsList.classList.toggle('hidden', open);
+  sessionsChevron.style.transform = open ? 'rotate(-90deg)' : '';
+});
+
+// ── Collapsible: system prompt ────────────────────────────────────────────────
+const spToggleBtn = document.getElementById('system-prompt-toggle-btn');
+const spBody      = document.getElementById('system-prompt-body');
+const spChevron   = document.getElementById('system-prompt-chevron');
+spToggleBtn.addEventListener('click', () => {
+  const open = spToggleBtn.getAttribute('aria-expanded') === 'true';
+  spToggleBtn.setAttribute('aria-expanded', String(!open));
+  spBody.classList.toggle('hidden', open);
+  spChevron.textContent = open ? '▸' : '▾';
+});
+
+// ── Temperature label ─────────────────────────────────────────────────────────
+const TEMP_BANDS = [
+  [0.30, 'Deterministic', 'bg-blue-900/50 text-blue-300'],
+  [0.70, 'Balanced',      'bg-emerald-900/50 text-emerald-300'],
+  [1.20, 'Creative',      'bg-orange-900/50 text-orange-300'],
+  [2.00, 'Chaotic',       'bg-red-900/50 text-red-300'],
+];
+
+function tempBandFor(v) {
+  for (const [max, label, cls] of TEMP_BANDS) if (v <= max) return [label, cls];
+  return ['Chaotic', 'bg-red-900/50 text-red-300'];
+}
+
+const tempSlider = document.getElementById('temperature-slider');
+const tempValue  = document.getElementById('temperature-value');
+const tempLabel  = document.getElementById('temperature-label');
+
+function applyTemp(v) {
+  const f = parseFloat(v);
+  tempValue.textContent = f.toFixed(2);
+  tempSlider.setAttribute('aria-valuenow', f);
+  const [label, cls] = tempBandFor(f);
+  tempLabel.textContent = label;
+  tempLabel.className = `text-center px-2 py-1 rounded text-xs font-medium transition-all duration-200 ${cls}`;
+  setSliderFill(tempSlider);
+  updateParamExplanation(f, parseFloat(topPSlider.value));
+}
+tempSlider.addEventListener('input', e => applyTemp(e.target.value));
+
+// ── Top-P display ─────────────────────────────────────────────────────────────
+const topPSlider = document.getElementById('top-p-slider');
+const topPValue  = document.getElementById('top-p-value');
+topPSlider.addEventListener('input', e => {
+  const f = parseFloat(e.target.value);
+  topPValue.textContent = f.toFixed(2);
+  topPSlider.setAttribute('aria-valuenow', f);
+  setSliderFill(topPSlider);
+  updateParamExplanation(parseFloat(tempSlider.value), f);
+});
+
+// ── Parameter effect explanation ──────────────────────────────────────────────
+function updateParamExplanation(temp, topP) {
+  const el = document.getElementById('param-explanation-text');
+  let msg;
+  if (temp < 0.3 && topP < 0.5)       msg = 'Maximally deterministic — nearly identical output every run. Good for structured extraction.';
+  else if (temp < 0.3 && topP >= 0.8)  msg = 'Focused and predictable, yet draws from a broad vocabulary. Great for factual Q&A.';
+  else if (temp >= 1.2 && topP >= 0.8) msg = 'Highly unpredictable — output varies dramatically. Useful for brainstorming wild ideas.';
+  else if (temp >= 1.2 && topP < 0.5)  msg = 'Creative phrasing within a constrained vocabulary. Unusual but not completely chaotic.';
+  else if (temp < 0.7 && topP >= 0.7)  msg = 'Balanced: consistent answers with natural-feeling variation. Good all-round default.';
+  else if (temp >= 0.7 && temp < 1.2)  msg = 'Creative range — well-suited for copywriting, storytelling, and ideation.';
+  else                                  msg = 'Moderate settings. Adjust to explore the quality–creativity trade-off.';
+  el.textContent = msg;
+}
+
+// ── Compare mini-sliders ──────────────────────────────────────────────────────
+['compare-a-temp','compare-b-temp'].forEach(id => {
+  const el = document.getElementById(id);
+  const vEl = document.getElementById(id + '-val');
+  el.addEventListener('input', () => { vEl.textContent = parseFloat(el.value).toFixed(2); setSliderFill(el); });
+});
+['compare-a-topp','compare-b-topp'].forEach(id => {
+  const el = document.getElementById(id);
+  const vEl = document.getElementById(id + '-val');
+  el.addEventListener('input', () => { vEl.textContent = parseFloat(el.value).toFixed(2); setSliderFill(el); });
+});
+
+// ── Textarea auto-resize ──────────────────────────────────────────────────────
+function autoResize(el) {
+  el.style.height = 'auto';
+  el.style.height = Math.min(el.scrollHeight, 200) + 'px';
+}
+document.getElementById('user-prompt').addEventListener('input', function () { autoResize(this); });
+document.getElementById('compare-prompt').addEventListener('input', function () { autoResize(this); });
+
+// ── marked + highlight.js config ─────────────────────────────────────────────
+if (typeof marked !== 'undefined') {
+  marked.setOptions({
+    highlight: (code, lang) => {
+      if (typeof hljs !== 'undefined') {
+        const valid = hljs.getLanguage(lang);
+        return valid ? hljs.highlight(code, { language: lang }).value
+                     : hljs.highlightAuto(code).value;
+      }
+      return code;
+    },
+    breaks: true,
+    gfm: true,
+  });
+}
+
+// ── Slider fill helper  (used by applyTemp, topP handler, and app.js) ────────
+/**
+ * Update the --val CSS custom property that drives the colored-track gradient.
+ * @param {HTMLInputElement} el
+ */
+function setSliderFill(el) {
+  if (!el) return;
+  const min = parseFloat(el.min  ?? 0);
+  const max = parseFloat(el.max  ?? 1);
+  const val = parseFloat(el.value ?? 0);
+  el.style.setProperty('--val', ((val - min) / (max - min) * 100).toFixed(1) + '%');
+}
+
+// ── Helpers exposed for app.js ────────────────────────────────────────────────
+window.PromptLabUI = {
+  openSettings,
+  closeSettings,
+
+  renderMarkdown(raw) {
+    if (typeof marked === 'undefined') return raw;
+    const dirty = marked.parse(raw || '');
+    return typeof DOMPurify !== 'undefined' ? DOMPurify.sanitize(dirty) : dirty;
+  },
+
+  setProviderIndicator(name, model, active) {
+    const dot   = document.getElementById('provider-status-dot');
+    const label = document.getElementById('active-provider-label');
+    const mLabel = document.getElementById('modal-active-provider');
+    const mDot   = document.getElementById('modal-provider-dot');
+    if (active) {
+      dot.className   = 'w-2 h-2 rounded-full bg-emerald-400 flex-shrink-0 transition-colors duration-300';
+      label.textContent = `${name} (${model})`;
+      if (mLabel) mLabel.textContent = `${name} (${model})`;
+      if (mDot) mDot.className = 'w-2 h-2 rounded-full bg-emerald-400';
+    } else {
+      dot.className   = 'w-2 h-2 rounded-full bg-slate-600 flex-shrink-0 transition-colors duration-300';
+      label.textContent = 'Not configured';
+      if (mLabel) mLabel.textContent = 'None';
+      if (mDot) mDot.className = 'w-2 h-2 rounded-full bg-slate-600';
+    }
+  },
+
+  showSetupWizard(show) {
+    document.getElementById('setup-wizard').classList.toggle('hidden', !show);
+  },
+
+  setPersona(persona, activePrompt) {
+    document.getElementById('selected-persona-icon').textContent = persona.icon || '💬';
+    document.getElementById('selected-persona-name').textContent = persona.name;
+    if (activePrompt) {
+      document.getElementById('system-prompt-textarea').value = activePrompt.prompt_text;
+      const badge = document.getElementById('prompt-version-badge');
+      badge.textContent = `v${activePrompt.version}`;
+      badge.classList.remove('hidden');
+      // reset temp/top-p to persona defaults
+      tempSlider.value  = persona.default_temperature;
+      topPSlider.value  = persona.default_top_p;
+      document.getElementById('max-tokens-input').value = persona.default_max_tokens;
+      applyTemp(persona.default_temperature);
+      topPValue.textContent = parseFloat(persona.default_top_p).toFixed(2);
+    }
+    document.getElementById('send-btn').disabled = false;
+    // clear chat
+    const msgs = document.getElementById('chat-messages');
+    msgs.innerHTML = '';
+    msgs.appendChild(Object.assign(document.createElement('div'), {
+      id: 'chat-empty-state',
+      className: 'flex flex-col items-center justify-center h-full text-center py-10',
+      innerHTML: `<div class="text-4xl mb-3" aria-hidden="true">${persona.icon || '💬'}</div>
+                  <p class="text-sm text-slate-400">Chat with <strong class="text-slate-200">${persona.name}</strong></p>
+                  <p class="text-xs text-slate-600 mt-1">${persona.domain}</p>`,
+    }));
+  },
+
+  appendMessage(role, html, meta) {
+    const empty = document.getElementById('chat-empty-state');
+    if (empty) empty.remove();
+
+    const wrap = document.createElement('div');
+    wrap.className = `flex gap-3 ${role === 'user' ? 'flex-row-reverse' : ''}`;
+    wrap.setAttribute('aria-label', `${role} message`);
+
+    const avatar = document.createElement('div');
+    avatar.className = role === 'user'
+      ? 'w-7 h-7 rounded-full bg-indigo-600 flex items-center justify-center text-xs font-bold text-white flex-shrink-0 mt-0.5'
+      : 'w-7 h-7 rounded-full bg-slate-700 flex items-center justify-center text-xs font-bold text-slate-300 flex-shrink-0 mt-0.5';
+    avatar.textContent = role === 'user' ? 'U' : 'A';
+    avatar.setAttribute('aria-hidden', 'true');
+
+    const bubble = document.createElement('div');
+    bubble.className = role === 'user'
+      ? 'max-w-[78%] px-4 py-2.5 bg-indigo-900/50 border border-indigo-800/50 rounded-2xl rounded-tr-sm text-sm text-slate-100 whitespace-pre-wrap'
+      : 'max-w-[78%] px-4 py-2.5 bg-slate-800 border border-slate-700/60 rounded-2xl rounded-tl-sm text-sm text-slate-100 prose-bubble';
+
+    if (role === 'user') {
+      bubble.textContent = html; // raw text for user
+    } else {
+      bubble.innerHTML = html;   // sanitised HTML for assistant
+      if (typeof hljs !== 'undefined') {
+        bubble.querySelectorAll('pre code').forEach(b => hljs.highlightElement(b));
+      }
+    }
+
+    const right = document.createElement('div');
+    right.className = 'flex flex-col gap-1 min-w-0';
+    right.appendChild(bubble);
+
+    if (meta && role === 'assistant') {
+      const metaEl = document.createElement('div');
+      metaEl.className = 'text-[10px] text-slate-600 px-1 flex gap-3 flex-wrap';
+      metaEl.setAttribute('aria-label', 'Response metadata');
+      if (meta.tokens_used) metaEl.innerHTML += `<span>🪙 ${meta.tokens_used} tokens</span>`;
+      if (meta.latency_ms)  metaEl.innerHTML += `<span>⚡ ${meta.latency_ms}ms</span>`;
+      if (meta.provider)    metaEl.innerHTML += `<span>🔌 ${meta.provider}</span>`;
+      if (meta.model)       metaEl.innerHTML += `<span>🤖 ${meta.model}</span>`;
+      right.appendChild(metaEl);
+    }
+
+    wrap.appendChild(avatar);
+    wrap.appendChild(right);
+
+    const msgs = document.getElementById('chat-messages');
+    msgs.appendChild(wrap);
+    msgs.scrollTop = msgs.scrollHeight;
+  },
+
+  setLoading(on) {
+    document.getElementById('send-btn').classList.toggle('hidden', on);
+    document.getElementById('loading-spinner').classList.toggle('hidden', !on);
+    document.getElementById('user-prompt').disabled = on;
+  },
+
+  getParams() {
+    return {
+      temperature:   parseFloat(document.getElementById('temperature-slider').value),
+      top_p:         parseFloat(document.getElementById('top-p-slider').value),
+      max_tokens:    parseInt(document.getElementById('max-tokens-input').value, 10),
+      provider_name: document.getElementById('provider-select').value || null,
+      model:         document.getElementById('model-select').value || null,
+      system_prompt: document.getElementById('system-prompt-textarea').value.trim() || null,
+    };
+  },
+
+  updateProviderSelect(providers) {
+    const sel = document.getElementById('provider-select');
+    const enabled = providers.filter(p => p.is_enabled);
+    sel.innerHTML = enabled.length
+      ? enabled.map(p => `<option value="${p.provider_name}">${p.display_name} (${p.default_model || '—'})</option>`).join('')
+      : '<option value="">No providers configured</option>';
+    // mirror into compare selects
+    ['compare-a-provider','compare-b-provider'].forEach(id => {
+      const s = document.getElementById(id);
+      s.innerHTML = '<option value="">Select…</option>' +
+        enabled.map(p => `<option value="${p.provider_name}">${p.display_name}</option>`).join('');
+    });
+  },
+
+  updateModelSelect(models, defaultModel) {
+    const sel = document.getElementById('model-select');
+    sel.innerHTML = models.map(m =>
+      `<option value="${m}" ${m === defaultModel ? 'selected' : ''}>${m}</option>`
+    ).join('');
+  },
+
+  updateProviderCard(provider) {
+    const badge   = document.getElementById(`${provider.provider_name}-status-badge`);
+    const testBtn = document.getElementById(`${provider.provider_name}-test-btn`);
+    const defBtn  = document.getElementById(`${provider.provider_name}-default-btn`);
+    const remBtn  = document.getElementById(`${provider.provider_name}-remove-btn`);
+    const keyInput= document.getElementById(`${provider.provider_name}-key-input`);
+    if (!badge) return;
+
+    if (provider.is_default && provider.is_enabled) {
+      badge.textContent = 'Active Default';
+      badge.className = 'px-2 py-0.5 rounded-full text-[11px] font-medium bg-emerald-900 text-emerald-300';
+    } else if (provider.is_enabled) {
+      badge.textContent = 'Configured';
+      badge.className = 'px-2 py-0.5 rounded-full text-[11px] font-medium bg-indigo-900 text-indigo-300';
+    } else {
+      badge.textContent = 'Not Configured';
+      badge.className = 'px-2 py-0.5 rounded-full text-[11px] font-medium bg-slate-700 text-slate-400';
+    }
+    if (testBtn) testBtn.disabled = !provider.is_enabled;
+    if (defBtn)  defBtn.disabled  = !provider.is_enabled || provider.is_default;
+    if (remBtn)  remBtn.classList.toggle('hidden', !provider.has_key);
+    if (keyInput && provider.key_preview) keyInput.placeholder = provider.key_preview;
+  },
+};
+
+// ── Init ──────────────────────────────────────────────────────────────────────
+applyTemp(tempSlider.value);   // also calls setSliderFill
+setSliderFill(topPSlider);
+topPValue.textContent = parseFloat(topPSlider.value).toFixed(2);
+updateParamExplanation(parseFloat(tempSlider.value), parseFloat(topPSlider.value));
+// prime compare-panel sliders
+['compare-a-temp','compare-b-temp','compare-a-topp','compare-b-topp'].forEach(id => {
+  const el = document.getElementById(id);
+  if (el) setSliderFill(el);
+});
+</script>
+
+<script src="/static/app.js"></script>
+</body>
+</html>
