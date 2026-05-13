@@ -13,6 +13,7 @@ async def generate_response(
     max_tokens: int = 1024,
     provider_name: str | None = None,
     model: str | None = None,
+    reasoning_effort: str | None = None,
 ) -> dict:
     if not (0.0 <= temperature <= 2.0):
         raise ValueError("Temperature must be between 0.0 and 2.0")
@@ -38,6 +39,7 @@ async def generate_response(
         top_p=top_p,
         max_tokens=max_tokens,
         model=model,
+        reasoning_effort=reasoning_effort,
     )
 
 

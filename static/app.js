@@ -16,11 +16,13 @@ const state = {
   params: {
     temperature: 0.7, top_p: 0.9, max_tokens: 1024,
     provider_name: null, model: null, system_prompt: '',
+    reasoning_effort: 'medium',
   },
   compareMode: false,
   paramsB: {
     temperature: 0.7, top_p: 0.9, max_tokens: 1024,
     provider_name: null, model: null, system_prompt: '',
+    reasoning_effort: 'medium',
   },
   sessions: [],           // SessionSummary[] from GET /api/sessions
 };
@@ -31,7 +33,7 @@ const state = {
 
 /** @type {Record<string, string[]>} Known model lists per provider */
 const KNOWN_MODELS = {
-  openai:      ['gpt-5.5', 'gpt-5.5-mini', 'gpt-4.1', 'gpt-4.1-mini', 'gpt-4.1-nano', 'gpt-4o', 'o3-mini'],
+  openai:      ['gpt-5.5', 'gpt-4.1'],
   anthropic:   ['claude-sonnet-4-6', 'claude-opus-4-7', 'claude-haiku-4-5'],
   huggingface: ['meta-llama/Llama-3.1-8B-Instruct', 'mistralai/Mistral-7B-Instruct-v0.3', 'google/gemma-2-9b-it'],
 };
@@ -382,12 +384,26 @@ function populateProviderSelect(enabled) {
 
   if (state.activeProvider) sel.value = state.activeProvider.provider_name;
 
-  // Mirror into compare-mode provider dropdowns
+  // Mirror into compare-mode provider dropdowns and pre-select the default provider.
+  const defaultProvider = enabled.find(p => p.is_default) ?? enabled[0] ?? null;
   ['compare-a-provider', 'compare-b-provider'].forEach(id => {
     const s = document.getElementById(id);
     if (!s) return;
     s.innerHTML = '<option value="">Select…</option>' +
       enabled.map(p => `<option value="${p.provider_name}">${p.display_name}</option>`).join('');
+    if (defaultProvider) {
+      s.value = defaultProvider.provider_name;
+      // Populate the corresponding model dropdown.
+      const panel = id.replace('compare-', '').replace('-provider', '');
+      const models = KNOWN_MODELS[defaultProvider.provider_name] ?? [];
+      const modelSel = document.getElementById(`compare-${panel}-model`);
+      if (modelSel) {
+        modelSel.innerHTML = models.length
+          ? models.map(m => `<option value="${m}" ${m === defaultProvider.default_model ? 'selected' : ''}>${m}</option>`).join('')
+          : '<option value="">—</option>';
+        updateComparePanelVisibility(panel, modelSel.value);
+      }
+    }
   });
 
   // Load model list for the active provider
@@ -929,14 +945,15 @@ async function sendPrompt() {
 
   try {
     const result = await apiPost('/api/chat', {
-      persona_id:    state.selectedPersona.id,
-      user_prompt:   text,
-      temperature:   state.params.temperature,
-      top_p:         state.params.top_p,
-      max_tokens:    state.params.max_tokens,
-      system_prompt: state.params.system_prompt,
-      provider_name: state.params.provider_name,
-      model:         state.params.model,
+      persona_id:       state.selectedPersona.id,
+      user_prompt:      text,
+      temperature:      state.params.temperature,
+      top_p:            state.params.top_p,
+      max_tokens:       state.params.max_tokens,
+      system_prompt:    state.params.system_prompt,
+      provider_name:    state.params.provider_name,
+      model:            state.params.model,
+      reasoning_effort: isReasoningModel(state.params.model) ? state.params.reasoning_effort : null,
     });
 
     appendMessage('assistant', renderMarkdown(result.response), {
@@ -991,26 +1008,42 @@ async function sendCompare() {
   if (metaB)   metaB.classList.add('hidden');
 
   // Read panel A params
-  const aTemp     = parseFloat(document.getElementById('compare-a-temp')?.value ?? 0.7);
-  const aTopP     = parseFloat(document.getElementById('compare-a-topp')?.value ?? 0.9);
-  const aProvider = document.getElementById('compare-a-provider')?.value || null;
-  const aModel    = document.getElementById('compare-a-model')?.value    || null;
+  const aTemp            = parseFloat(document.getElementById('compare-a-temp')?.value ?? 0.7);
+  const aTopP            = parseFloat(document.getElementById('compare-a-topp')?.value ?? 0.9);
+  const aProvider        = document.getElementById('compare-a-provider')?.value || null;
+  const aModel           = document.getElementById('compare-a-model')?.value    || null;
+  const aReasoningEffort = document.querySelector('#compare-a-reasoning-note .compare-effort-btn[aria-pressed="true"]')?.dataset.effort ?? 'medium';
 
   // Read panel B params
-  const bTemp     = parseFloat(document.getElementById('compare-b-temp')?.value ?? 0.7);
-  const bTopP     = parseFloat(document.getElementById('compare-b-topp')?.value ?? 0.9);
-  const bProvider = document.getElementById('compare-b-provider')?.value || null;
-  const bModel    = document.getElementById('compare-b-model')?.value    || null;
+  const bTemp            = parseFloat(document.getElementById('compare-b-temp')?.value ?? 0.7);
+  const bTopP            = parseFloat(document.getElementById('compare-b-topp')?.value ?? 0.9);
+  const bProvider        = document.getElementById('compare-b-provider')?.value || null;
+  const bModel           = document.getElementById('compare-b-model')?.value    || null;
+  const bReasoningEffort = document.querySelector('#compare-b-reasoning-note .compare-effort-btn[aria-pressed="true"]')?.dataset.effort ?? 'medium';
 
   try {
     const result = await apiPost('/api/compare', {
       user_prompt: text,
-      config_a: { persona_id: state.selectedPersona.id, temperature: aTemp, top_p: aTopP, provider_name: aProvider, model: aModel },
-      config_b: { persona_id: state.selectedPersona.id, temperature: bTemp, top_p: bTopP, provider_name: bProvider, model: bModel },
+      config_a: { persona_id: state.selectedPersona.id, temperature: aTemp, top_p: aTopP, provider_name: aProvider, model: aModel, reasoning_effort: isReasoningModel(aModel) ? aReasoningEffort : null },
+      config_b: { persona_id: state.selectedPersona.id, temperature: bTemp, top_p: bTopP, provider_name: bProvider, model: bModel, reasoning_effort: isReasoningModel(bModel) ? bReasoningEffort : null },
     });
 
-    if (resA) { resA.innerHTML = renderMarkdown(result.response_a); resA.querySelectorAll?.('pre code').forEach(b => hljs?.highlightElement(b)); }
-    if (resB) { resB.innerHTML = renderMarkdown(result.response_b); resB.querySelectorAll?.('pre code').forEach(b => hljs?.highlightElement(b)); }
+    if (resA) {
+      if (result.error_a) {
+        resA.innerHTML = `<p class="text-red-400 text-xs">Error: ${escapeHtml(result.error_a)}</p>`;
+      } else {
+        resA.innerHTML = renderMarkdown(result.response_a ?? '');
+        resA.querySelectorAll?.('pre code').forEach(b => hljs?.highlightElement(b));
+      }
+    }
+    if (resB) {
+      if (result.error_b) {
+        resB.innerHTML = `<p class="text-red-400 text-xs">Error: ${escapeHtml(result.error_b)}</p>`;
+      } else {
+        resB.innerHTML = renderMarkdown(result.response_b ?? '');
+        resB.querySelectorAll?.('pre code').forEach(b => hljs?.highlightElement(b));
+      }
+    }
 
     // Metadata + difference hints
     const lenA = result.response_a?.length ?? 0;
@@ -1023,20 +1056,30 @@ async function sendCompare() {
     const costB = formatCost(result.model_b, result.input_tokens_b, result.output_tokens_b, result.tokens_b);
 
     if (metaA) {
-      let textA = result.provider_a || '—';
-      if (result.model_a) textA += ` · ${result.model_a}`;
-      textA += ` · ${result.tokens_a ?? '?'} tokens · ${result.latency_a}ms`;
-      if (costA) textA += ` · ${costA}`;
-      metaA.textContent = textA;
-      metaA.classList.remove('hidden');
+      if (result.error_a) {
+        metaA.textContent = 'Failed';
+        metaA.classList.remove('hidden');
+      } else {
+        let textA = result.provider_a || '—';
+        if (result.model_a) textA += ` · ${result.model_a}`;
+        textA += ` · ${result.tokens_a ?? '?'} tokens · ${result.latency_a}ms`;
+        if (costA) textA += ` · ${costA}`;
+        metaA.textContent = textA;
+        metaA.classList.remove('hidden');
+      }
     }
     if (metaB) {
-      let textB = result.provider_b || '—';
-      if (result.model_b) textB += ` · ${result.model_b}`;
-      textB += ` · ${result.tokens_b ?? '?'} tokens · ${result.latency_b}ms${lenHint}`;
-      if (costB) textB += ` · ${costB}`;
-      metaB.textContent = textB;
-      metaB.classList.remove('hidden');
+      if (result.error_b) {
+        metaB.textContent = 'Failed';
+        metaB.classList.remove('hidden');
+      } else {
+        let textB = result.provider_b || '—';
+        if (result.model_b) textB += ` · ${result.model_b}`;
+        textB += ` · ${result.tokens_b ?? '?'} tokens · ${result.latency_b}ms${lenHint}`;
+        if (costB) textB += ` · ${costB}`;
+        metaB.textContent = textB;
+        metaB.classList.remove('hidden');
+      }
     }
   } catch (err) {
     const errHtml = `<p class="text-red-400 text-xs">${escapeHtml(err.message)}</p>`;
@@ -1144,6 +1187,34 @@ function wire() {
   document.getElementById('model-select')?.addEventListener('change', function () {
     state.params.model = this.value;
     updateSidebarParamVisibility(this.value);
+  });
+
+  // ── Reasoning effort buttons (sidebar) ───────────────────────────────────
+  document.querySelectorAll('.reasoning-effort-btn').forEach(btn => {
+    btn.addEventListener('click', function () {
+      document.querySelectorAll('.reasoning-effort-btn').forEach(b => {
+        b.setAttribute('aria-pressed', 'false');
+        b.className = 'reasoning-effort-btn flex-1 py-1.5 rounded text-[11px] font-medium border transition-colors bg-slate-800 border-slate-700 text-slate-400 hover:border-amber-600/60 hover:text-amber-300';
+      });
+      this.setAttribute('aria-pressed', 'true');
+      this.className = 'reasoning-effort-btn flex-1 py-1.5 rounded text-[11px] font-medium border transition-colors bg-amber-900/60 border-amber-700/60 text-amber-200';
+      state.params.reasoning_effort = this.dataset.effort;
+      const hint = document.getElementById('reasoning-effort-hint');
+      if (hint) hint.textContent = this.dataset.effort.charAt(0).toUpperCase() + this.dataset.effort.slice(1);
+    });
+  });
+
+  // ── Reasoning effort buttons (compare panels) ────────────────────────────
+  document.querySelectorAll('.compare-effort-btn').forEach(btn => {
+    btn.addEventListener('click', function () {
+      const panel = this.dataset.panel;
+      document.querySelectorAll(`.compare-effort-btn[data-panel="${panel}"]`).forEach(b => {
+        b.setAttribute('aria-pressed', 'false');
+        b.className = 'compare-effort-btn flex-1 py-1 rounded text-[10px] font-medium border transition-colors bg-slate-800 border-slate-700 text-slate-400 hover:border-amber-600/60 hover:text-amber-300';
+      });
+      this.setAttribute('aria-pressed', 'true');
+      this.className = 'compare-effort-btn flex-1 py-1 rounded text-[10px] font-medium border transition-colors bg-amber-900/60 border-amber-700/60 text-amber-200';
+    });
   });
 
   // ── Temperature slider ────────────────────────────────────────────────────

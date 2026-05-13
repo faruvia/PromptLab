@@ -19,6 +19,7 @@ class LLMProvider(ABC):
         top_p: float,
         max_tokens: int,
         model: str,
+        reasoning_effort: str | None = None,
     ) -> dict:
         """Returns: {response, tokens_used, input_tokens, output_tokens,
                      latency_ms, model, provider}"""

@@ -244,6 +244,10 @@ def set_provider_api_key(
         raise ValueError(f"Unknown provider: {provider_name}")
     config.encrypted_api_key = security.encrypt_api_key(plaintext_key)
     config.is_enabled = True
+    # Auto-promote to default if no default exists yet.
+    has_default = db.query(models.ProviderConfig).filter_by(is_default=True).first()
+    if not has_default:
+        config.is_default = True
     db.commit()
     db.refresh(config)
     return config

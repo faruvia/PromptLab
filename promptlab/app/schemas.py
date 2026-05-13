@@ -104,9 +104,10 @@ class ChatRequest(BaseModel):
     temperature: float = 0.7
     top_p: float = 0.9
     max_tokens: int = 1024
-    system_prompt: str | None = None   # overrides active persona prompt
-    provider_name: str | None = None   # None → use default provider
-    model: str | None = None           # None → provider's default model
+    system_prompt: str | None = None      # overrides active persona prompt
+    provider_name: str | None = None      # None → use default provider
+    model: str | None = None              # None → provider's default model
+    reasoning_effort: str | None = None   # "low" | "medium" | "high" — reasoning models only
 
 
 class ChatResponse(BaseModel):
@@ -129,6 +130,7 @@ class CompareConfig(BaseModel):
     system_prompt: str | None = None
     provider_name: str | None = None
     model: str | None = None
+    reasoning_effort: str | None = None   # "low" | "medium" | "high" — reasoning models only
 
 
 class CompareRequest(BaseModel):
@@ -138,20 +140,22 @@ class CompareRequest(BaseModel):
 
 
 class CompareResponse(BaseModel):
-    response_a: str
-    response_b: str
-    latency_a: int | None
-    latency_b: int | None
-    tokens_a: int | None
-    tokens_b: int | None
+    response_a: str | None = None
+    response_b: str | None = None
+    latency_a: int | None = None
+    latency_b: int | None = None
+    tokens_a: int | None = None
+    tokens_b: int | None = None
     input_tokens_a: int | None = None
     output_tokens_a: int | None = None
     input_tokens_b: int | None = None
     output_tokens_b: int | None = None
-    provider_a: str
-    provider_b: str
+    provider_a: str | None = None
+    provider_b: str | None = None
     model_a: str | None = None
     model_b: str | None = None
+    error_a: str | None = None
+    error_b: str | None = None
 
 
 # ---------- Provider ----------

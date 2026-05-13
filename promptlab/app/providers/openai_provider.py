@@ -8,12 +8,7 @@ class OpenAIProvider(LLMProvider):
     display_name = "OpenAI"
     supported_models = [
         "gpt-5.5",
-        "gpt-5.5-mini",
         "gpt-4.1",
-        "gpt-4.1-mini",
-        "gpt-4.1-nano",
-        "gpt-4o",
-        "o3-mini",
     ]
 
     def __init__(self, api_key: str, extra_config: dict | None = None):
@@ -31,18 +26,21 @@ class OpenAIProvider(LLMProvider):
         top_p: float,
         max_tokens: int,
         model: str,
+        reasoning_effort: str | None = None,
     ) -> dict:
         messages = [
             {"role": "system", "content": system_prompt},
             {"role": "user", "content": user_prompt},
         ]
 
-        # Reasoning models (o-series) and newer GPT models use max_completion_tokens
-        # and do not support temperature or top_p.
+        # Reasoning models (o-series, gpt-5.x) use max_completion_tokens and
+        # reasoning_effort instead of temperature / top_p.
         is_reasoning = model.startswith("o") or model.startswith("gpt-5")
         token_param = "max_completion_tokens" if is_reasoning else "max_tokens"
         params: dict = {"model": model, "messages": messages, token_param: max_tokens}
-        if not is_reasoning:
+        if is_reasoning:
+            params["reasoning_effort"] = reasoning_effort or "medium"
+        else:
             params["temperature"] = temperature
             params["top_p"] = top_p
 
@@ -58,8 +56,26 @@ class OpenAIProvider(LLMProvider):
 
         latency_ms = int((time.perf_counter() - start) * 1000)
 
+        choice = response.choices[0]
+        msg = choice.message
+
+        # content can be None for reasoning models that return only internal
+        # reasoning tokens, or a list of typed blocks on newer model versions.
+        content = msg.content
+        if content is None:
+            refusal = getattr(msg, "refusal", None)
+            content = f"[Refused: {refusal}]" if refusal else ""
+        elif isinstance(content, list):
+            # Structured content blocks — extract text parts only.
+            content = "\n".join(
+                (b["text"] if isinstance(b, dict) else getattr(b, "text", ""))
+                for b in content
+                if (isinstance(b, dict) and b.get("type") == "text")
+                or (hasattr(b, "type") and b.type == "text")
+            )
+
         return {
-            "response": response.choices[0].message.content,
+            "response": content,
             "tokens_used": response.usage.total_tokens,
             "input_tokens": response.usage.prompt_tokens,
             "output_tokens": response.usage.completion_tokens,

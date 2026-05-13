@@ -4,14 +4,15 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>PromptLab — Explore System Prompts, Temperature &amp; Top-P</title>
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🧪</text></svg>">
 
+  <script src="https://cdn.tailwindcss.com"></script>
   <script>
     tailwind.config = {
       darkMode: 'class',
       theme: { extend: {} }
     }
   </script>
-  <script src="https://cdn.tailwindcss.com"></script>
 
   <link rel="stylesheet"
     href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/github-dark.min.css">
@@ -330,9 +331,23 @@
                      class="w-full accent-indigo-500" aria-label="Top-P A">
             </div>
             <div id="compare-a-reasoning-note"
-                 class="hidden col-span-2 px-2 py-1.5 bg-amber-950/50 border border-amber-800/40 rounded text-[10px] text-amber-200/70"
-                 role="note">
-              Sampling not available — this model controls temperature internally.
+                 class="hidden col-span-2 px-2 py-2 bg-amber-950/50 border border-amber-800/40 rounded space-y-1"
+                 role="group" aria-label="Reasoning effort A">
+              <p class="text-[10px] font-semibold text-amber-300">Reasoning Effort</p>
+              <div class="flex gap-1" role="radiogroup">
+                <button data-effort="low"    data-panel="a"
+                        class="compare-effort-btn flex-1 py-1 rounded text-[10px] font-medium border transition-colors
+                               bg-slate-800 border-slate-700 text-slate-400 hover:border-amber-600/60 hover:text-amber-300"
+                        title="Minimal reasoning steps — fastest" aria-pressed="false">Low</button>
+                <button data-effort="medium" data-panel="a"
+                        class="compare-effort-btn flex-1 py-1 rounded text-[10px] font-medium border transition-colors
+                               bg-amber-900/60 border-amber-700/60 text-amber-200"
+                        title="Balanced — default" aria-pressed="true">Medium</button>
+                <button data-effort="high"   data-panel="a"
+                        class="compare-effort-btn flex-1 py-1 rounded text-[10px] font-medium border transition-colors
+                               bg-slate-800 border-slate-700 text-slate-400 hover:border-amber-600/60 hover:text-amber-300"
+                        title="Deepest reasoning — most thorough" aria-pressed="false">High</button>
+              </div>
             </div>
           </div>
 
@@ -384,9 +399,23 @@
                      class="w-full accent-violet-500" aria-label="Top-P B">
             </div>
             <div id="compare-b-reasoning-note"
-                 class="hidden col-span-2 px-2 py-1.5 bg-amber-950/50 border border-amber-800/40 rounded text-[10px] text-amber-200/70"
-                 role="note">
-              Sampling not available — this model controls temperature internally.
+                 class="hidden col-span-2 px-2 py-2 bg-amber-950/50 border border-amber-800/40 rounded space-y-1"
+                 role="group" aria-label="Reasoning effort B">
+              <p class="text-[10px] font-semibold text-amber-300">Reasoning Effort</p>
+              <div class="flex gap-1" role="radiogroup">
+                <button data-effort="low"    data-panel="b"
+                        class="compare-effort-btn flex-1 py-1 rounded text-[10px] font-medium border transition-colors
+                               bg-slate-800 border-slate-700 text-slate-400 hover:border-amber-600/60 hover:text-amber-300"
+                        title="Minimal reasoning steps — fastest" aria-pressed="false">Low</button>
+                <button data-effort="medium" data-panel="b"
+                        class="compare-effort-btn flex-1 py-1 rounded text-[10px] font-medium border transition-colors
+                               bg-amber-900/60 border-amber-700/60 text-amber-200"
+                        title="Balanced — default" aria-pressed="true">Medium</button>
+                <button data-effort="high"   data-panel="b"
+                        class="compare-effort-btn flex-1 py-1 rounded text-[10px] font-medium border transition-colors
+                               bg-slate-800 border-slate-700 text-slate-400 hover:border-amber-600/60 hover:text-amber-300"
+                        title="Deepest reasoning — most thorough" aria-pressed="false">High</button>
+              </div>
             </div>
           </div>
 
@@ -512,14 +541,33 @@
       </div>
     </div>
 
-    <!-- Reasoning model notice (shown when temp/top-p are hidden) -->
+    <!-- Reasoning effort selector (shown instead of temp/top-p for reasoning models) -->
     <div id="reasoning-model-note"
-         class="hidden p-3 bg-amber-950/50 border border-amber-800/40 rounded-lg"
-         role="note">
-      <p class="text-[11px] font-semibold text-amber-300 mb-1">Sampling not available</p>
-      <p class="text-[11px] text-amber-200/70 leading-relaxed">
-        This model controls its own token sampling internally.
-        Temperature and Top-P are not supported and are not sent to the API.
+         class="hidden p-3 bg-amber-950/50 border border-amber-800/40 rounded-lg space-y-2"
+         role="group" aria-label="Reasoning effort">
+      <div class="flex items-center justify-between">
+        <p class="text-[11px] font-semibold text-amber-300">Reasoning Effort</p>
+        <span id="reasoning-effort-hint" class="text-[10px] text-amber-200/60 italic">Medium</span>
+      </div>
+      <div class="flex gap-1.5" role="radiogroup" aria-label="Select reasoning effort">
+        <button data-effort="low"
+                class="reasoning-effort-btn flex-1 py-1.5 rounded text-[11px] font-medium border transition-colors
+                       bg-slate-800 border-slate-700 text-slate-400 hover:border-amber-600/60 hover:text-amber-300"
+                title="Fastest and cheapest — minimal internal reasoning steps"
+                aria-pressed="false">Low</button>
+        <button data-effort="medium"
+                class="reasoning-effort-btn flex-1 py-1.5 rounded text-[11px] font-medium border transition-colors
+                       bg-amber-900/60 border-amber-700/60 text-amber-200"
+                title="Balanced — good default for most tasks"
+                aria-pressed="true">Medium</button>
+        <button data-effort="high"
+                class="reasoning-effort-btn flex-1 py-1.5 rounded text-[11px] font-medium border transition-colors
+                       bg-slate-800 border-slate-700 text-slate-400 hover:border-amber-600/60 hover:text-amber-300"
+                title="Deepest reasoning — best for complex problems, higher cost"
+                aria-pressed="false">High</button>
+      </div>
+      <p class="text-[10px] text-amber-200/50">
+        Temperature and Top-P are not supported by this model.
       </p>
     </div>
 
@@ -654,12 +702,7 @@
                   class="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 text-sm text-slate-200 focus:outline-none focus:ring-1 focus:ring-indigo-500"
                   aria-label="Default model for OpenAI">
             <option value="gpt-5.5">gpt-5.5</option>
-            <option value="gpt-5.5-mini">gpt-5.5-mini</option>
             <option value="gpt-4.1">gpt-4.1</option>
-            <option value="gpt-4.1-mini">gpt-4.1-mini</option>
-            <option value="gpt-4.1-nano">gpt-4.1-nano</option>
-            <option value="gpt-4o">gpt-4o</option>
-            <option value="o3-mini">o3-mini</option>
           </select>
         </div>
 
@@ -911,7 +954,7 @@ function updateParamExplanation(temp, topP) {
   else if (temp < 0.7 && topP >= 0.7)  msg = 'Balanced: consistent answers with natural-feeling variation. Good all-round default.';
   else if (temp >= 0.7 && temp < 1.2)  msg = 'Creative range — well-suited for copywriting, storytelling, and ideation.';
   else                                  msg = 'Moderate settings. Adjust to explore the quality–creativity trade-off.';
-  el.textContent = msg;
+  if (el) el.textContent = msg;
 }
 
 // ── Compare mini-sliders ──────────────────────────────────────────────────────

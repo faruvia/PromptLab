@@ -1,7 +1,7 @@
 import asyncio
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
-from ..database import get_db
+from ..database import get_db, SessionLocal
 from .. import crud, schemas, llm_service
 
 router = APIRouter(tags=["chat"])
@@ -32,6 +32,7 @@ async def chat(request: schemas.ChatRequest, db: Session = Depends(get_db)):
             max_tokens=request.max_tokens,
             provider_name=request.provider_name,
             model=request.model,
+            reasoning_effort=request.reasoning_effort,
         )
     except ValueError as exc:
         raise HTTPException(status_code=400, detail=str(exc))
@@ -76,47 +77,64 @@ async def chat(request: schemas.ChatRequest, db: Session = Depends(get_db)):
 @router.post("/compare", response_model=schemas.CompareResponse)
 async def compare(request: schemas.CompareRequest, db: Session = Depends(get_db)):
     async def run_config(config: schemas.CompareConfig) -> dict:
-        persona = crud.get_persona(db, config.persona_id)
-        if not persona:
-            raise ValueError(f"Persona {config.persona_id} not found")
-        active = crud.get_active_system_prompt(db, config.persona_id)
-        if not active:
-            raise ValueError(
-                f"No active system prompt for persona {config.persona_id}"
+        # Use a dedicated session so the two concurrent tasks don't share state.
+        own_db = SessionLocal()
+        try:
+            persona = crud.get_persona(own_db, config.persona_id)
+            if not persona:
+                raise ValueError(f"Persona {config.persona_id} not found")
+            active = crud.get_active_system_prompt(own_db, config.persona_id)
+            if not active:
+                raise ValueError(
+                    f"No active system prompt for persona {config.persona_id}"
+                )
+            system = config.system_prompt or active.prompt_text
+            return await llm_service.generate_response(
+                db=own_db,
+                system_prompt=system,
+                user_prompt=request.user_prompt,
+                temperature=config.temperature,
+                top_p=config.top_p,
+                max_tokens=config.max_tokens,
+                provider_name=config.provider_name,
+                model=config.model,
+                reasoning_effort=config.reasoning_effort,
             )
-        system = config.system_prompt or active.prompt_text
-        return await llm_service.generate_response(
-            db=db,
-            system_prompt=system,
-            user_prompt=request.user_prompt,
-            temperature=config.temperature,
-            top_p=config.top_p,
-            max_tokens=config.max_tokens,
-            provider_name=config.provider_name,
-            model=config.model,
+        finally:
+            own_db.close()
+
+    results = await asyncio.gather(
+        run_config(request.config_a),
+        run_config(request.config_b),
+        return_exceptions=True,
+    )
+    result_a, result_b = results
+
+    # If both panels failed, raise immediately.
+    if isinstance(result_a, Exception) and isinstance(result_b, Exception):
+        raise HTTPException(
+            status_code=400,
+            detail=f"Config A: {result_a} | Config B: {result_b}",
         )
 
-    try:
-        result_a, result_b = await asyncio.gather(
-            run_config(request.config_a),
-            run_config(request.config_b),
-        )
-    except ValueError as exc:
-        raise HTTPException(status_code=400, detail=str(exc))
+    def _ok(r: dict | Exception, key: str, default=None):
+        return r.get(key, default) if isinstance(r, dict) else default
 
     return {
-        "response_a": result_a["response"],
-        "response_b": result_b["response"],
-        "latency_a": result_a["latency_ms"],
-        "latency_b": result_b["latency_ms"],
-        "tokens_a": result_a["tokens_used"],
-        "tokens_b": result_b["tokens_used"],
-        "input_tokens_a": result_a.get("input_tokens"),
-        "output_tokens_a": result_a.get("output_tokens"),
-        "input_tokens_b": result_b.get("input_tokens"),
-        "output_tokens_b": result_b.get("output_tokens"),
-        "provider_a": result_a["provider"],
-        "provider_b": result_b["provider"],
-        "model_a": result_a["model"],
-        "model_b": result_b["model"],
+        "response_a": _ok(result_a, "response"),
+        "response_b": _ok(result_b, "response"),
+        "latency_a": _ok(result_a, "latency_ms"),
+        "latency_b": _ok(result_b, "latency_ms"),
+        "tokens_a": _ok(result_a, "tokens_used"),
+        "tokens_b": _ok(result_b, "tokens_used"),
+        "input_tokens_a": _ok(result_a, "input_tokens"),
+        "output_tokens_a": _ok(result_a, "output_tokens"),
+        "input_tokens_b": _ok(result_b, "input_tokens"),
+        "output_tokens_b": _ok(result_b, "output_tokens"),
+        "provider_a": _ok(result_a, "provider"),
+        "provider_b": _ok(result_b, "provider"),
+        "model_a": _ok(result_a, "model"),
+        "model_b": _ok(result_b, "model"),
+        "error_a": str(result_a) if isinstance(result_a, Exception) else None,
+        "error_b": str(result_b) if isinstance(result_b, Exception) else None,
     }
