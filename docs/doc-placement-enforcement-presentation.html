@@ -1,0 +1,1441 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Enforcing Markdown Placement in Claude Code</title>
+<style>
+  :root {
+    --bg: #0f1117;
+    --surface: #1a1d27;
+    --surface2: #21253a;
+    --border: #2e3350;
+    --accent: #6c63ff;
+    --accent2: #00d4aa;
+    --text: #e2e8f0;
+    --muted: #8892aa;
+    --green: #22c55e;
+    --red: #f87171;
+    --yellow: #fbbf24;
+    --blue: #60a5fa;
+    --exit0: #22c55e;
+    --exit1: #f59e0b;
+    --exit2: #ef4444;
+    --layer1: #6c63ff;
+    --layer2: #00d4aa;
+    --layer3: #f59e0b;
+    --layer4: #f87171;
+    --code-bg: #0d1117;
+    --radius: 10px;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    display: flex;
+    min-height: 100vh;
+    line-height: 1.6;
+  }
+
+  /* ── Sidebar nav ─────────────────────────────────────────────── */
+  nav {
+    width: 240px;
+    min-width: 240px;
+    background: var(--surface);
+    border-right: 1px solid var(--border);
+    position: sticky;
+    top: 0;
+    height: 100vh;
+    overflow-y: auto;
+    padding: 24px 0;
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+  }
+
+  nav .nav-brand {
+    padding: 0 20px 20px;
+    border-bottom: 1px solid var(--border);
+    margin-bottom: 12px;
+    font-size: 12px;
+    font-weight: 700;
+    letter-spacing: .08em;
+    text-transform: uppercase;
+    color: var(--accent);
+  }
+
+  nav a {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 8px 20px;
+    color: var(--muted);
+    text-decoration: none;
+    font-size: 13px;
+    border-left: 3px solid transparent;
+    transition: all .15s;
+  }
+
+  nav a:hover { color: var(--text); background: var(--surface2); }
+  nav a.active { color: var(--text); border-left-color: var(--accent); background: var(--surface2); }
+
+  nav .nav-dot {
+    width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0;
+  }
+
+  /* ── Main content ────────────────────────────────────────────── */
+  main {
+    flex: 1;
+    overflow-y: auto;
+    scroll-behavior: smooth;
+  }
+
+  /* ── Hero ────────────────────────────────────────────────────── */
+  .hero {
+    background: linear-gradient(135deg, #1a1d27 0%, #13162b 50%, #1a1d27 100%);
+    border-bottom: 1px solid var(--border);
+    padding: 80px 64px 64px;
+    position: relative;
+    overflow: hidden;
+  }
+
+  .hero::before {
+    content: '';
+    position: absolute;
+    width: 600px; height: 600px;
+    background: radial-gradient(circle, rgba(108,99,255,.12) 0%, transparent 70%);
+    top: -200px; right: -100px;
+    pointer-events: none;
+  }
+
+  .hero-tag {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    background: rgba(108,99,255,.15);
+    color: var(--accent);
+    border: 1px solid rgba(108,99,255,.3);
+    padding: 4px 12px;
+    border-radius: 20px;
+    font-size: 12px;
+    font-weight: 600;
+    letter-spacing: .06em;
+    text-transform: uppercase;
+    margin-bottom: 20px;
+  }
+
+  .hero h1 {
+    font-size: 42px;
+    font-weight: 800;
+    line-height: 1.15;
+    margin-bottom: 12px;
+    background: linear-gradient(135deg, #e2e8f0 0%, #a5b4fc 100%);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+  }
+
+  .hero p {
+    font-size: 18px;
+    color: var(--muted);
+    max-width: 560px;
+  }
+
+  .hero-badges {
+    display: flex;
+    gap: 10px;
+    margin-top: 28px;
+    flex-wrap: wrap;
+  }
+
+  .badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 6px 14px;
+    border-radius: 6px;
+    font-size: 13px;
+    font-weight: 600;
+    border: 1px solid;
+  }
+
+  /* ── Sections ────────────────────────────────────────────────── */
+  section {
+    padding: 56px 64px;
+    border-bottom: 1px solid var(--border);
+    scroll-margin-top: 0;
+  }
+
+  section:last-child { border-bottom: none; }
+
+  .section-tag {
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: .1em;
+    text-transform: uppercase;
+    margin-bottom: 8px;
+  }
+
+  h2 {
+    font-size: 28px;
+    font-weight: 700;
+    margin-bottom: 8px;
+    line-height: 1.3;
+  }
+
+  h3 {
+    font-size: 16px;
+    font-weight: 600;
+    color: var(--muted);
+    margin-bottom: 28px;
+  }
+
+  h4 {
+    font-size: 14px;
+    font-weight: 600;
+    color: var(--accent2);
+    text-transform: uppercase;
+    letter-spacing: .06em;
+    margin: 28px 0 12px;
+  }
+
+  p { color: var(--muted); margin-bottom: 16px; font-size: 15px; }
+  p strong { color: var(--text); font-weight: 600; }
+
+  /* ── Cards ───────────────────────────────────────────────────── */
+  .card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 24px;
+    margin-bottom: 16px;
+  }
+
+  .card-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 16px;
+  }
+
+  .card.pros { border-color: rgba(34,197,94,.25); background: rgba(34,197,94,.04); }
+  .card.cons { border-color: rgba(248,113,113,.25); background: rgba(248,113,113,.04); }
+
+  .card-title {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 13px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: .07em;
+    margin-bottom: 14px;
+  }
+
+  .card.pros .card-title { color: var(--green); }
+  .card.cons .card-title { color: var(--red); }
+
+  .card ul { list-style: none; display: flex; flex-direction: column; gap: 10px; }
+
+  .card ul li {
+    display: grid;
+    grid-template-columns: auto 1fr;
+    gap: 10px;
+    font-size: 14px;
+    color: var(--muted);
+  }
+
+  .card ul li strong { color: var(--text); font-weight: 600; }
+
+  .card.pros ul li::before { content: '✓'; color: var(--green); font-weight: 700; }
+  .card.cons ul li::before { content: '✗'; color: var(--red); font-weight: 700; }
+
+  /* ── Best for ────────────────────────────────────────────────── */
+  .best-for {
+    background: rgba(108,99,255,.08);
+    border: 1px solid rgba(108,99,255,.2);
+    border-radius: var(--radius);
+    padding: 16px 20px;
+    font-size: 14px;
+    color: var(--text);
+    display: flex;
+    gap: 10px;
+    align-items: flex-start;
+    margin-top: 16px;
+  }
+
+  .best-for::before { content: '★'; color: var(--accent); font-size: 16px; flex-shrink: 0; }
+
+  /* ── Code blocks ─────────────────────────────────────────────── */
+  pre {
+    background: var(--code-bg);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 20px 24px;
+    overflow-x: auto;
+    margin: 16px 0;
+  }
+
+  code {
+    font-family: 'SF Mono', 'Cascadia Code', 'Fira Code', 'Consolas', monospace;
+    font-size: 13px;
+    line-height: 1.7;
+    color: #e2e8f0;
+  }
+
+  :not(pre) > code {
+    background: rgba(255,255,255,.08);
+    border: 1px solid rgba(255,255,255,.1);
+    border-radius: 4px;
+    padding: 2px 6px;
+    font-size: 13px;
+    color: var(--accent2);
+  }
+
+  .kw  { color: #c792ea; }
+  .str { color: #c3e88d; }
+  .cmt { color: #546e7a; font-style: italic; }
+  .fn  { color: #82aaff; }
+  .num { color: #f78c6c; }
+  .key { color: #ffcb6b; }
+
+  /* ── Layer overview ──────────────────────────────────────────── */
+  .layer-stack {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    margin: 24px 0;
+  }
+
+  .layer-item {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    padding: 16px 20px;
+    border-radius: 6px;
+    border: 1px solid;
+    position: relative;
+  }
+
+  .layer-num {
+    width: 28px; height: 28px;
+    border-radius: 50%;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 12px; font-weight: 700;
+    flex-shrink: 0;
+  }
+
+  .layer-content { flex: 1; }
+  .layer-content strong { font-size: 15px; display: block; margin-bottom: 2px; }
+  .layer-content span { font-size: 13px; color: var(--muted); }
+
+  .layer-file {
+    font-family: monospace;
+    font-size: 12px;
+    padding: 4px 10px;
+    border-radius: 4px;
+    white-space: nowrap;
+  }
+
+  .layer-arrow {
+    text-align: center;
+    color: var(--border);
+    font-size: 18px;
+    padding: 2px 0;
+  }
+
+  .l1 { background: rgba(108,99,255,.06); border-color: rgba(108,99,255,.25); }
+  .l1 .layer-num { background: rgba(108,99,255,.2); color: var(--layer1); }
+  .l1 .layer-file { background: rgba(108,99,255,.12); color: var(--layer1); }
+
+  .l2 { background: rgba(0,212,170,.06); border-color: rgba(0,212,170,.25); }
+  .l2 .layer-num { background: rgba(0,212,170,.2); color: var(--layer2); }
+  .l2 .layer-file { background: rgba(0,212,170,.12); color: var(--layer2); }
+
+  .l3 { background: rgba(245,158,11,.06); border-color: rgba(245,158,11,.25); }
+  .l3 .layer-num { background: rgba(245,158,11,.2); color: var(--layer3); }
+  .l3 .layer-file { background: rgba(245,158,11,.12); color: var(--layer3); }
+
+  .l4 { background: rgba(239,68,68,.06); border-color: rgba(239,68,68,.25); }
+  .l4 .layer-num { background: rgba(239,68,68,.2); color: var(--layer4); }
+  .l4 .layer-file { background: rgba(239,68,68,.12); color: var(--layer4); }
+
+  /* ── Exit code cards ─────────────────────────────────────────── */
+  .exit-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 16px;
+    margin: 24px 0;
+  }
+
+  .exit-card {
+    border-radius: var(--radius);
+    border: 1px solid;
+    overflow: hidden;
+  }
+
+  .exit-card-header {
+    padding: 20px 24px 16px;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+  }
+
+  .exit-badge {
+    font-size: 22px;
+    font-weight: 900;
+    font-family: monospace;
+    width: 44px; height: 44px;
+    border-radius: 8px;
+    display: flex; align-items: center; justify-content: center;
+    flex-shrink: 0;
+  }
+
+  .exit-card-title { font-size: 16px; font-weight: 700; }
+  .exit-card-sub { font-size: 12px; color: var(--muted); margin-top: 2px; }
+
+  .exit-card-body { padding: 0 24px 20px; font-size: 14px; color: var(--muted); }
+  .exit-card-body p { font-size: 14px; margin-bottom: 12px; }
+
+  .exit-card-body .example {
+    background: var(--code-bg);
+    border-radius: 6px;
+    padding: 12px 14px;
+    font-family: monospace;
+    font-size: 12px;
+    line-height: 1.6;
+  }
+
+  .exit-meta {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    margin-top: 12px;
+  }
+
+  .exit-meta-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    font-size: 12px;
+  }
+
+  .exit-meta-row span:first-child { color: var(--muted); }
+
+  .pill {
+    padding: 2px 8px;
+    border-radius: 10px;
+    font-size: 11px;
+    font-weight: 600;
+  }
+
+  .e0 { border-color: rgba(34,197,94,.3); }
+  .e0 .exit-card-header { background: rgba(34,197,94,.07); }
+  .e0 .exit-badge { background: rgba(34,197,94,.2); color: var(--exit0); }
+  .e0 .exit-card-title { color: var(--exit0); }
+  .e0 .pill.yes { background: rgba(34,197,94,.15); color: var(--exit0); }
+  .e0 .pill.no  { background: rgba(255,255,255,.07); color: var(--muted); }
+
+  .e1 { border-color: rgba(245,158,11,.3); }
+  .e1 .exit-card-header { background: rgba(245,158,11,.07); }
+  .e1 .exit-badge { background: rgba(245,158,11,.2); color: var(--exit1); }
+  .e1 .exit-card-title { color: var(--exit1); }
+  .e1 .pill.yes { background: rgba(245,158,11,.15); color: var(--exit1); }
+  .e1 .pill.no  { background: rgba(255,255,255,.07); color: var(--muted); }
+
+  .e2 { border-color: rgba(239,68,68,.3); }
+  .e2 .exit-card-header { background: rgba(239,68,68,.07); }
+  .e2 .exit-badge { background: rgba(239,68,68,.2); color: var(--exit2); }
+  .e2 .exit-card-title { color: var(--exit2); }
+  .e2 .pill.yes { background: rgba(239,68,68,.15); color: var(--exit2); }
+  .e2 .pill.no  { background: rgba(255,255,255,.07); color: var(--muted); }
+
+  /* ── Comparison table ────────────────────────────────────────── */
+  .table-wrap { overflow-x: auto; margin: 24px 0; }
+
+  table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 14px;
+  }
+
+  thead th {
+    background: var(--surface2);
+    padding: 12px 16px;
+    text-align: left;
+    font-size: 12px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: .06em;
+    color: var(--muted);
+    border-bottom: 2px solid var(--border);
+  }
+
+  tbody td {
+    padding: 12px 16px;
+    border-bottom: 1px solid var(--border);
+    color: var(--muted);
+    vertical-align: top;
+  }
+
+  tbody tr:last-child td { border-bottom: none; }
+  tbody tr:hover td { background: var(--surface2); }
+  tbody td:first-child { color: var(--text); font-weight: 600; }
+
+  .yes-pill { background: rgba(34,197,94,.12); color: var(--green); padding: 2px 8px; border-radius: 10px; font-size: 12px; font-weight: 600; white-space: nowrap; }
+  .no-pill  { background: rgba(255,255,255,.06); color: var(--muted); padding: 2px 8px; border-radius: 10px; font-size: 12px; font-weight: 600; white-space: nowrap; }
+  .partial-pill { background: rgba(245,158,11,.12); color: var(--yellow); padding: 2px 8px; border-radius: 10px; font-size: 12px; font-weight: 600; white-space: nowrap; }
+
+  /* ── Flow diagram ────────────────────────────────────────────── */
+  .flow {
+    background: var(--code-bg);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 32px;
+    margin: 24px 0;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 0;
+    font-size: 14px;
+  }
+
+  .flow-start {
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    border-radius: 20px;
+    padding: 10px 24px;
+    font-weight: 600;
+    color: var(--text);
+    margin-bottom: 4px;
+  }
+
+  .flow-arrow { color: var(--muted); font-size: 18px; line-height: 1.2; padding: 2px 0; }
+
+  .flow-diamond {
+    background: rgba(108,99,255,.1);
+    border: 1px solid rgba(108,99,255,.3);
+    border-radius: 6px;
+    padding: 10px 20px;
+    font-size: 13px;
+    color: var(--text);
+    text-align: center;
+    margin: 2px 0;
+  }
+
+  .flow-branch {
+    display: flex;
+    gap: 32px;
+    align-items: flex-start;
+    width: 100%;
+    justify-content: center;
+    margin: 4px 0;
+  }
+
+  .flow-branch-item {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 4px;
+  }
+
+  .flow-label {
+    font-size: 12px;
+    color: var(--muted);
+    font-style: italic;
+  }
+
+  .flow-exit {
+    padding: 8px 16px;
+    border-radius: 6px;
+    font-size: 13px;
+    font-weight: 700;
+    font-family: monospace;
+    text-align: center;
+  }
+
+  .flow-exit.e0 { background: rgba(34,197,94,.15); color: var(--exit0); border: 1px solid rgba(34,197,94,.3); }
+  .flow-exit.e1 { background: rgba(245,158,11,.15); color: var(--exit1); border: 1px solid rgba(245,158,11,.3); }
+  .flow-exit.e2 { background: rgba(239,68,68,.15); color: var(--exit2); border: 1px solid rgba(239,68,68,.3); }
+
+  /* ── Scenarios table ─────────────────────────────────────────── */
+  .scenario-table td:last-child {
+    font-family: monospace;
+    font-size: 13px;
+    font-weight: 700;
+  }
+
+  /* ── Takeaways ───────────────────────────────────────────────── */
+  .takeaways {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    margin-top: 24px;
+  }
+
+  .takeaway {
+    display: flex;
+    gap: 16px;
+    padding: 20px;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    align-items: flex-start;
+    transition: border-color .15s;
+  }
+
+  .takeaway:hover { border-color: var(--accent); }
+
+  .takeaway-num {
+    width: 32px; height: 32px;
+    border-radius: 50%;
+    background: rgba(108,99,255,.15);
+    color: var(--accent);
+    display: flex; align-items: center; justify-content: center;
+    font-size: 14px; font-weight: 800;
+    flex-shrink: 0;
+  }
+
+  .takeaway-body strong { color: var(--text); font-size: 15px; display: block; margin-bottom: 4px; }
+  .takeaway-body p { font-size: 14px; margin: 0; }
+
+  /* ── File reference ──────────────────────────────────────────── */
+  .file-ref {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    margin-top: 16px;
+  }
+
+  .file-ref-row {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 12px 16px;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    font-size: 14px;
+  }
+
+  .file-ref-path {
+    font-family: monospace;
+    font-size: 13px;
+    color: var(--accent2);
+    min-width: 280px;
+  }
+
+  .file-ref-role { color: var(--muted); }
+
+  /* ── Defence depth diagram ───────────────────────────────────── */
+  .defence-diagram {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 1px;
+    background: var(--border);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    overflow: hidden;
+    margin: 24px 0;
+  }
+
+  .defence-col {
+    background: var(--surface);
+    padding: 24px 20px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    text-align: center;
+    gap: 12px;
+  }
+
+  .defence-icon {
+    width: 48px; height: 48px;
+    border-radius: 12px;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 22px;
+  }
+
+  .defence-layer { font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: .08em; }
+  .defence-name { font-size: 15px; font-weight: 700; color: var(--text); }
+  .defence-desc { font-size: 12px; color: var(--muted); line-height: 1.5; }
+  .defence-arrow { font-size: 18px; color: var(--muted); align-self: center; }
+
+  .dc1 .defence-icon { background: rgba(108,99,255,.15); }
+  .dc1 .defence-layer { color: var(--layer1); }
+  .dc2 .defence-icon { background: rgba(0,212,170,.15); }
+  .dc2 .defence-layer { color: var(--layer2); }
+  .dc3 .defence-icon { background: rgba(245,158,11,.15); }
+  .dc3 .defence-layer { color: var(--layer3); }
+  .dc4 .defence-icon { background: rgba(239,68,68,.15); }
+  .dc4 .defence-layer { color: var(--layer4); }
+
+  .miss-note {
+    font-size: 12px;
+    color: var(--muted);
+    text-align: center;
+    margin-top: 4px;
+    font-style: italic;
+  }
+
+  .miss-note span { color: var(--text); font-weight: 600; font-style: normal; }
+
+  /* ── Divider ─────────────────────────────────────────────────── */
+  hr { border: none; border-top: 1px solid var(--border); margin: 28px 0; }
+
+  /* ── Scrollbar ───────────────────────────────────────────────── */
+  ::-webkit-scrollbar { width: 6px; height: 6px; }
+  ::-webkit-scrollbar-track { background: transparent; }
+  ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
+  ::-webkit-scrollbar-thumb:hover { background: var(--muted); }
+</style>
+</head>
+<body>
+
+<!-- ── Sidebar ──────────────────────────────────────────────────── -->
+<nav>
+  <div class="nav-brand">Claude Code</div>
+  <a href="#hero" class="active"><span class="nav-dot" style="background:#6c63ff"></span>Overview</a>
+  <a href="#problem"><span class="nav-dot" style="background:#f87171"></span>The Problem</a>
+  <a href="#layer1"><span class="nav-dot" style="background:#6c63ff"></span>Layer 1 — CLAUDE.md</a>
+  <a href="#layer2"><span class="nav-dot" style="background:#00d4aa"></span>Layer 2 — Skill</a>
+  <a href="#layer3"><span class="nav-dot" style="background:#f59e0b"></span>Layer 3 — Hook</a>
+  <a href="#layer4"><span class="nav-dot" style="background:#f87171"></span>Layer 4 — Exit Codes</a>
+  <a href="#comparison"><span class="nav-dot" style="background:#60a5fa"></span>Comparison</a>
+  <a href="#defence"><span class="nav-dot" style="background:#a5b4fc"></span>Defence in Depth</a>
+  <a href="#takeaways"><span class="nav-dot" style="background:#fbbf24"></span>Takeaways</a>
+  <a href="#files"><span class="nav-dot" style="background:#8892aa"></span>File Reference</a>
+</nav>
+
+<!-- ── Main ─────────────────────────────────────────────────────── -->
+<main>
+
+  <!-- Hero -->
+  <section class="hero" id="hero">
+    <div class="hero-tag">&#9679; Team Presentation</div>
+    <h1>Enforcing Markdown<br>Placement in Claude Code</h1>
+    <p>Four complementary layers — from natural language intent to automated enforcement — that keep every <code>.md</code> file in <code>docs/</code>.</p>
+    <div class="hero-badges">
+      <span class="badge" style="background:rgba(108,99,255,.12);border-color:rgba(108,99,255,.3);color:#a5b4fc">&#128196; CLAUDE.md</span>
+      <span class="badge" style="background:rgba(0,212,170,.12);border-color:rgba(0,212,170,.3);color:#5eead4">&#9889; /create-doc Skill</span>
+      <span class="badge" style="background:rgba(245,158,11,.12);border-color:rgba(245,158,11,.3);color:#fcd34d">&#128279; PostToolUse Hook</span>
+      <span class="badge" style="background:rgba(239,68,68,.12);border-color:rgba(239,68,68,.3);color:#fca5a5">&#128268; Exit Codes 0 / 1 / 2</span>
+    </div>
+  </section>
+
+  <!-- Problem -->
+  <section id="problem">
+    <div class="section-tag" style="color:var(--red)">&#9888; Context</div>
+    <h2>The Problem</h2>
+    <h3>Why enforcement is needed at all</h3>
+
+    <p>When Claude writes files, it doesn't always put them in the right place. A markdown file might land at the project root, inside a source directory, or wherever Claude decides is convenient in the moment.</p>
+    <p>Without enforcement, conventions only hold as long as Claude — and every team member — remembers them in every session.</p>
+
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-top:24px;">
+      <div class="card" style="border-color:rgba(239,68,68,.25);background:rgba(239,68,68,.04)">
+        <div style="font-size:13px;font-weight:700;color:var(--red);margin-bottom:10px">&#10005; Without enforcement</div>
+        <ul style="list-style:none;display:flex;flex-direction:column;gap:8px;font-size:14px;color:var(--muted)">
+          <li>&#8226; Files land wherever Claude decides</li>
+          <li>&#8226; Violations are silent — no error, no warning</li>
+          <li>&#8226; Convention relies on memory</li>
+          <li>&#8226; Inconsistent repo structure over time</li>
+        </ul>
+      </div>
+      <div class="card" style="border-color:rgba(34,197,94,.25);background:rgba(34,197,94,.04)">
+        <div style="font-size:13px;font-weight:700;color:var(--green);margin-bottom:10px">&#10003; With four layers</div>
+        <ul style="list-style:none;display:flex;flex-direction:column;gap:8px;font-size:14px;color:var(--muted)">
+          <li>&#8226; Intent set at session start via CLAUDE.md</li>
+          <li>&#8226; Correct placement baked into the skill</li>
+          <li>&#8226; Hook auto-moves misplaced files</li>
+          <li>&#8226; Conflicts blocked until resolved</li>
+        </ul>
+      </div>
+    </div>
+
+    <div style="margin-top:24px;">
+      <div style="font-size:13px;font-weight:700;color:var(--muted);margin-bottom:8px;text-transform:uppercase;letter-spacing:.06em">Goal</div>
+      <div class="card" style="border-color:rgba(108,99,255,.3);background:rgba(108,99,255,.06)">
+        <p style="margin:0;font-size:15px;color:var(--text)">All project markdown must live in <code>docs/</code>. Any <code>.md</code> file written outside it is a violation — unless it's on the exception list.</p>
+      </div>
+    </div>
+  </section>
+
+  <!-- Layer stack overview -->
+  <section id="overview">
+    <div class="section-tag" style="color:var(--accent)">Architecture</div>
+    <h2>Four Complementary Layers</h2>
+    <h3>Each layer handles what the previous one misses</h3>
+
+    <div class="layer-stack">
+      <div class="layer-item l1">
+        <div class="layer-num">1</div>
+        <div class="layer-content">
+          <strong>Natural Language Instruction</strong>
+          <span>Sets Claude's intent at session start — zero infrastructure required</span>
+        </div>
+        <div class="layer-file">CLAUDE.md</div>
+      </div>
+      <div class="layer-arrow">↓</div>
+      <div class="layer-item l2">
+        <div class="layer-num">2</div>
+        <div class="layer-content">
+          <strong>Reusable Skill (Slash Command)</strong>
+          <span>Bakes the correct path into a repeatable, invocable pattern</span>
+        </div>
+        <div class="layer-file">/create-doc</div>
+      </div>
+      <div class="layer-arrow">↓</div>
+      <div class="layer-item l3">
+        <div class="layer-num">3</div>
+        <div class="layer-content">
+          <strong>Automated Hook Enforcement</strong>
+          <span>Catches every Write call and auto-moves misplaced files</span>
+        </div>
+        <div class="layer-file">PostToolUse</div>
+      </div>
+      <div class="layer-arrow">↓</div>
+      <div class="layer-item l4">
+        <div class="layer-num">4</div>
+        <div class="layer-content">
+          <strong>Structured Hook Signalling</strong>
+          <span>Controls whether Claude is informed, continues, or must stop and fix</span>
+        </div>
+        <div class="layer-file">exit 0 / 1 / 2</div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Layer 1 -->
+  <section id="layer1">
+    <div class="section-tag" style="color:var(--layer1)">Layer 1</div>
+    <h2>CLAUDE.md Instruction</h2>
+    <h3>Natural language rule loaded at every session start</h3>
+
+    <p><code>CLAUDE.md</code> is a file Claude Code reads automatically when a session starts. Any rule written in it becomes part of Claude's working context — as if you told it the rule at the beginning of every conversation.</p>
+
+    <h4>The Rule</h4>
+    <pre><code><span class="cmt"># PromptLab</span>
+
+All project markdown files go in <span class="str">`docs/`</span>. Never create <span class="str">`.md`</span> files
+at the root or in source directories. Exception: <span class="str">`CLAUDE.md`</span>.</code></pre>
+
+    <h4>How It Works</h4>
+    <p>Claude reads <code>CLAUDE.md</code> on startup. The rule shapes its intent throughout the session — it behaves as if the constraint was part of its system prompt. No tooling, no scripts, no build steps.</p>
+
+    <div class="card-grid">
+      <div class="card pros">
+        <div class="card-title">&#10003; Pros</div>
+        <ul>
+          <li><div><strong>Zero infrastructure</strong><br>No scripts, no config, no build step — just a markdown file</div></li>
+          <li><div><strong>Instant to change</strong><br>Edit one file; rule takes effect next session</div></li>
+          <li><div><strong>Human-readable</strong><br>Non-technical team members can read and update it</div></li>
+          <li><div><strong>Broad scope</strong><br>Applies to everything Claude does, not just specific tools</div></li>
+        </ul>
+      </div>
+      <div class="card cons">
+        <div class="card-title">&#10007; Cons</div>
+        <ul>
+          <li><div><strong>Memory-dependent</strong><br>Claude can forget or deprioritise the rule mid-session</div></li>
+          <li><div><strong>No enforcement</strong><br>Violations produce no error — they silently succeed</div></li>
+          <li><div><strong>Implicit only</strong><br>Shapes Claude's intent; doesn't validate outcomes</div></li>
+          <li><div><strong>Conflict risk</strong><br>Multiple CLAUDE.md files in subdirectories can conflict</div></li>
+        </ul>
+      </div>
+    </div>
+
+    <div class="best-for">Best for setting intent and default behaviour. Works well for rules that are easy to follow and rarely violated in practice.</div>
+  </section>
+
+  <!-- Layer 2 -->
+  <section id="layer2">
+    <div class="section-tag" style="color:var(--layer2)">Layer 2</div>
+    <h2>create-doc Skill</h2>
+    <h3>A slash command that always writes to the right place</h3>
+
+    <p>A <strong>project skill</strong> is a reusable unit of Claude behaviour defined in a single <code>SKILL.md</code> file inside <code>.claude/skills/</code>. It registers as a slash command in Claude Code's command picker.</p>
+
+    <h4>File Structure</h4>
+    <pre><code>.claude/
+└── skills/
+    └── create-doc/
+        └── SKILL.md     <span class="cmt">← defines /create-doc</span></code></pre>
+
+    <h4>How to Invoke</h4>
+    <pre><code>/create-doc API reference for all endpoints
+/create-doc architecture overview of the provider system
+/create-doc getting started guide for new contributors</code></pre>
+
+    <h4>SKILL.md Frontmatter</h4>
+    <pre><code><span class="cmt">---</span>
+<span class="key">name</span>: create-doc
+<span class="key">description</span>: <span class="str">Create a markdown document in the docs/ folder.</span>
+<span class="key">argument-hint</span>: <span class="str">"what to document (e.g. 'API reference', 'architecture overview')"</span>
+<span class="cmt">---</span></code></pre>
+
+    <p>The <code>description</code> field also enables <strong>auto-triggering</strong> — Claude invokes the skill automatically when it detects phrases like "document X" or "write a guide for X" without an explicit slash command.</p>
+
+    <h4>Steps Claude Follows</h4>
+    <div class="card" style="padding:16px 20px;">
+      <ol style="list-style:none;display:flex;flex-direction:column;gap:10px;font-size:14px;color:var(--muted);counter-reset:step">
+        <li style="display:flex;gap:12px;align-items:baseline"><span style="background:rgba(0,212,170,.15);color:var(--layer2);border-radius:50%;width:22px;height:22px;display:inline-flex;align-items:center;justify-content:center;font-size:12px;font-weight:700;flex-shrink:0">1</span>Derive a kebab-case filename from the argument</li>
+        <li style="display:flex;gap:12px;align-items:baseline"><span style="background:rgba(0,212,170,.15);color:var(--layer2);border-radius:50%;width:22px;height:22px;display:inline-flex;align-items:center;justify-content:center;font-size:12px;font-weight:700;flex-shrink:0">2</span>Check if <code>docs/&lt;filename&gt;.md</code> already exists — update in place rather than duplicate</li>
+        <li style="display:flex;gap:12px;align-items:baseline"><span style="background:rgba(0,212,170,.15);color:var(--layer2);border-radius:50%;width:22px;height:22px;display:inline-flex;align-items:center;justify-content:center;font-size:12px;font-weight:700;flex-shrink:0">3</span>Read relevant source files from <code>promptlab/</code> if the subject is code-related</li>
+        <li style="display:flex;gap:12px;align-items:baseline"><span style="background:rgba(0,212,170,.15);color:var(--layer2);border-radius:50%;width:22px;height:22px;display:inline-flex;align-items:center;justify-content:center;font-size:12px;font-weight:700;flex-shrink:0">4</span>Write the finished document to <code>docs/&lt;filename&gt;.md</code></li>
+      </ol>
+    </div>
+
+    <div class="card-grid" style="margin-top:16px">
+      <div class="card pros">
+        <div class="card-title">&#10003; Pros</div>
+        <ul>
+          <li><div><strong>Correct placement by design</strong><br><code>docs/</code> is baked in — not a suggestion</div></li>
+          <li><div><strong>Consistent output format</strong><br>Every invocation follows the same steps</div></li>
+          <li><div><strong>Discoverable</strong><br>Appears in the <code>/</code> command picker with argument hint</div></li>
+          <li><div><strong>Auto-trigger capable</strong><br>Invoked from natural language, not just slash commands</div></li>
+          <li><div><strong>Version-controlled</strong><br>Skill file is tracked in git alongside the project</div></li>
+        </ul>
+      </div>
+      <div class="card cons">
+        <div class="card-title">&#10007; Cons</div>
+        <ul>
+          <li><div><strong>Opt-in only</strong><br>Claude can still write markdown directly, bypassing the skill</div></li>
+          <li><div><strong>Session reload required</strong><br>Modified skills need a Claude Code restart to register</div></li>
+          <li><div><strong>Narrow scope</strong><br>Only helps when creating docs; won't catch other markdown writes</div></li>
+          <li><div><strong>No fallback enforcement</strong><br>If Claude bypasses the skill, there's no correction</div></li>
+        </ul>
+      </div>
+    </div>
+
+    <div class="best-for">Best for standardising documentation creation when the team explicitly invokes the skill. Pairs with a hook for full coverage.</div>
+  </section>
+
+  <!-- Layer 3 -->
+  <section id="layer3">
+    <div class="section-tag" style="color:var(--layer3)">Layer 3</div>
+    <h2>PostToolUse Hook</h2>
+    <h3>Automated enforcement on every Write call</h3>
+
+    <p>A <strong>hook</strong> is a shell command registered in <code>.claude/settings.json</code> that Claude Code runs automatically at lifecycle events. <code>PostToolUse</code> fires after every tool call — including every <code>Write</code> — regardless of how or why Claude wrote the file.</p>
+
+    <h4>Registration in settings.json</h4>
+    <pre><code>{
+  <span class="key">"hooks"</span>: {
+    <span class="key">"PostToolUse"</span>: [
+      {
+        <span class="key">"matcher"</span>: <span class="str">"Write"</span>,
+        <span class="key">"hooks"</span>: [
+          {
+            <span class="key">"type"</span>: <span class="str">"command"</span>,
+            <span class="key">"command"</span>: <span class="str">"powershell -NonInteractive -NoProfile -File .claude/hooks/check-md-placement.ps1"</span>
+          }
+        ]
+      }
+    ]
+  }
+}</code></pre>
+
+    <h4>Stdin JSON the Hook Receives</h4>
+    <pre><code>{
+  <span class="key">"tool_name"</span>: <span class="str">"Write"</span>,
+  <span class="key">"tool_input"</span>: {
+    <span class="key">"file_path"</span>: <span class="str">"notes.md"</span>,   <span class="cmt">← this is what we inspect</span>
+    <span class="key">"content"</span>: <span class="str">"..."</span>
+  }
+}</code></pre>
+
+    <h4>Exception List</h4>
+    <pre><code><span class="cmt"># Named files — allowed outside docs/ regardless of location</span>
+<span class="kw">$allowedNames</span> = @(<span class="str">'CLAUDE.md'</span>)
+
+<span class="cmt"># Directory subtrees — never touched</span>
+<span class="kw">$allowedPrefixes</span> = @(
+    <span class="str">'docs/'</span>,          <span class="cmt"># already correct</span>
+    <span class="str">'.claude/'</span>,        <span class="cmt"># Claude Code internals (skills, hooks, settings)</span>
+    <span class="str">'.venv/'</span>,          <span class="cmt"># Python virtual environment</span>
+    <span class="str">'node_modules/'</span>   <span class="cmt"># JS dependencies</span>
+)</code></pre>
+
+    <h4>Decision Flow</h4>
+    <div class="flow">
+      <div class="flow-start">Write tool fires</div>
+      <div class="flow-arrow">↓</div>
+      <div class="flow-diamond">Is the file <code>.md</code>?</div>
+      <div class="flow-branch">
+        <div class="flow-branch-item">
+          <div class="flow-label">No</div>
+          <div class="flow-exit e0">EXIT 0<br><small>ignore</small></div>
+        </div>
+        <div class="flow-branch-item" style="align-items:center">
+          <div class="flow-label">Yes ↓</div>
+          <div class="flow-diamond">In allowed location<br>or exception list?</div>
+          <div class="flow-branch">
+            <div class="flow-branch-item">
+              <div class="flow-label">Yes</div>
+              <div class="flow-exit e0">EXIT 0<br><small>correct</small></div>
+            </div>
+            <div class="flow-branch-item" style="align-items:center">
+              <div class="flow-label">No ↓</div>
+              <div class="flow-diamond"><code>docs/&lt;name&gt;</code><br>already exists?</div>
+              <div class="flow-branch">
+                <div class="flow-branch-item">
+                  <div class="flow-label">Yes</div>
+                  <div class="flow-exit e2">EXIT 2<br><small>conflict</small></div>
+                </div>
+                <div class="flow-branch-item" style="align-items:center">
+                  <div class="flow-label">No ↓</div>
+                  <div class="flow-diamond">Move to<br><code>docs/&lt;name&gt;</code></div>
+                  <div class="flow-branch">
+                    <div class="flow-branch-item">
+                      <div class="flow-label">Success</div>
+                      <div class="flow-exit e1">EXIT 1<br><small>moved</small></div>
+                    </div>
+                    <div class="flow-branch-item">
+                      <div class="flow-label">Failure</div>
+                      <div class="flow-exit e2">EXIT 2<br><small>error</small></div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="card-grid">
+      <div class="card pros">
+        <div class="card-title">&#10003; Pros</div>
+        <ul>
+          <li><div><strong>Always fires</strong><br>Catches every Write call, not just skill invocations</div></li>
+          <li><div><strong>Self-healing</strong><br>Moves the file automatically when there's no conflict</div></li>
+          <li><div><strong>No memory reliance</strong><br>Rule is in code, not in conversation context</div></li>
+          <li><div><strong>Composable</strong><br>Multiple hooks can be chained for the same event</div></li>
+          <li><div><strong>Version-controlled</strong><br>Script lives in <code>.claude/hooks/</code> tracked in git</div></li>
+        </ul>
+      </div>
+      <div class="card cons">
+        <div class="card-title">&#10007; Cons</div>
+        <ul>
+          <li><div><strong>Reactive, not preventive</strong><br>File is already written in the wrong place before the hook runs</div></li>
+          <li><div><strong>Adds latency</strong><br>Every Write call now spawns a PowerShell process</div></li>
+          <li><div><strong>Windows-specific</strong><br><code>.ps1</code> is not portable to Linux/macOS without a bash equivalent</div></li>
+          <li><div><strong>No undo on exit 2</strong><br>When blocked, the misplaced file stays on disk — Claude must clean it up</div></li>
+        </ul>
+      </div>
+    </div>
+
+    <div class="best-for">Best as a safety net — catches any markdown write that slips through intent-level controls, regardless of how the file was created.</div>
+  </section>
+
+  <!-- Layer 4 -->
+  <section id="layer4">
+    <div class="section-tag" style="color:var(--layer4)">Layer 4</div>
+    <h2>Hook Exit Codes</h2>
+    <h3>Three exit codes control what Claude Code does next</h3>
+
+    <p>The exit code a hook returns is the primary signal back to Claude Code. It determines whether Claude continues normally, receives an informational message, or is blocked until the problem is resolved.</p>
+
+    <div class="exit-grid">
+
+      <div class="exit-card e0">
+        <div class="exit-card-header">
+          <div class="exit-badge">0</div>
+          <div>
+            <div class="exit-card-title">Allow</div>
+            <div class="exit-card-sub">Silent pass-through</div>
+          </div>
+        </div>
+        <div class="exit-card-body">
+          <p>No output, no interruption. Claude Code continues exactly as it was. Use this whenever the hook has nothing to act on.</p>
+          <div class="example"><span class="cmt"># File is in docs/ or on exception list</span>
+<span class="kw">exit</span> <span class="num">0</span></div>
+          <div class="exit-meta">
+            <div class="exit-meta-row"><span>Claude sees output</span><span class="pill no">No</span></div>
+            <div class="exit-meta-row"><span>Claude continues</span><span class="pill yes">Yes</span></div>
+            <div class="exit-meta-row"><span>Use when</span><span style="color:var(--muted);font-size:11px">Nothing to report</span></div>
+          </div>
+          <div style="margin-top:12px;font-size:12px;color:var(--muted);border-top:1px solid rgba(255,255,255,.06);padding-top:10px">
+            <strong style="color:var(--exit0)">In this project:</strong> file is in <code>docs/</code>, is <code>CLAUDE.md</code>, or is in <code>.claude/</code>, <code>.venv/</code>
+          </div>
+        </div>
+      </div>
+
+      <div class="exit-card e1">
+        <div class="exit-card-header">
+          <div class="exit-badge">1</div>
+          <div>
+            <div class="exit-card-title">Inform</div>
+            <div class="exit-card-sub">Non-blocking message</div>
+          </div>
+        </div>
+        <div class="exit-card-body">
+          <p>Hook's stdout is shown to Claude as an informational message. Claude reads it, updates its understanding, and <strong>continues without interruption</strong>.</p>
+          <div class="example"><span class="fn">Write-Output</span> <span class="str">"HOOK: Moved 'notes.md'</span>
+<span class="str">         → 'docs/notes.md'"</span>
+<span class="kw">exit</span> <span class="num">1</span></div>
+          <div class="exit-meta">
+            <div class="exit-meta-row"><span>Claude sees output</span><span class="pill yes">Yes (info)</span></div>
+            <div class="exit-meta-row"><span>Claude continues</span><span class="pill yes">Yes</span></div>
+            <div class="exit-meta-row"><span>Use when</span><span style="color:var(--muted);font-size:11px">Action taken, Claude should know</span></div>
+          </div>
+          <div style="margin-top:12px;font-size:12px;color:var(--muted);border-top:1px solid rgba(255,255,255,.06);padding-top:10px">
+            <strong style="color:var(--exit1)">In this project:</strong> a misplaced <code>.md</code> was successfully moved to <code>docs/</code>
+          </div>
+        </div>
+      </div>
+
+      <div class="exit-card e2">
+        <div class="exit-card-header">
+          <div class="exit-badge">2</div>
+          <div>
+            <div class="exit-card-title">Block</div>
+            <div class="exit-card-sub">Hard stop — must resolve</div>
+          </div>
+        </div>
+        <div class="exit-card-body">
+          <p>Current operation is <strong>stopped</strong>. Claude reads the error and must actively resolve it — rename, merge, or fix — before proceeding.</p>
+          <div class="example"><span class="fn">Write-Output</span> <span class="str">"HOOK BLOCKED:
+  'notes.md' cannot be moved
+  'docs/notes.md' exists."</span>
+<span class="kw">exit</span> <span class="num">2</span></div>
+          <div class="exit-meta">
+            <div class="exit-meta-row"><span>Claude sees output</span><span class="pill yes">Yes (error)</span></div>
+            <div class="exit-meta-row"><span>Claude continues</span><span class="pill no">No — must fix</span></div>
+            <div class="exit-meta-row"><span>Use when</span><span style="color:var(--muted);font-size:11px">Intervention required</span></div>
+          </div>
+          <div style="margin-top:12px;font-size:12px;color:var(--muted);border-top:1px solid rgba(255,255,255,.06);padding-top:10px">
+            <strong style="color:var(--exit2)">In this project:</strong> naming conflict in <code>docs/</code>, or filesystem move failed
+          </div>
+        </div>
+      </div>
+
+    </div>
+
+    <h4>Scenario Table</h4>
+    <div class="table-wrap">
+      <table class="scenario-table">
+        <thead>
+          <tr>
+            <th>Scenario</th>
+            <th>File written</th>
+            <th>Exit</th>
+            <th>Outcome</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td>Claude writes to correct location</td>
+            <td><code>docs/guide.md</code></td>
+            <td style="color:var(--exit0);font-weight:700">0</td>
+            <td style="color:var(--muted)">Silent pass</td>
+          </tr>
+          <tr>
+            <td>Claude writes CLAUDE.md</td>
+            <td><code>CLAUDE.md</code></td>
+            <td style="color:var(--exit0);font-weight:700">0</td>
+            <td style="color:var(--muted)">Named exception</td>
+          </tr>
+          <tr>
+            <td>Claude writes a skill definition</td>
+            <td><code>.claude/skills/x/SKILL.md</code></td>
+            <td style="color:var(--exit0);font-weight:700">0</td>
+            <td style="color:var(--muted)"><code>.claude/</code> prefix exempt</td>
+          </tr>
+          <tr>
+            <td>Misplaced <code>.md</code>, no conflict in docs/</td>
+            <td><code>notes.md</code> → moved to <code>docs/notes.md</code></td>
+            <td style="color:var(--exit1);font-weight:700">1</td>
+            <td style="color:var(--muted)">Auto-moved, Claude informed</td>
+          </tr>
+          <tr>
+            <td>Misplaced <code>.md</code>, name already in docs/</td>
+            <td><code>guide.md</code> (conflict)</td>
+            <td style="color:var(--exit2);font-weight:700">2</td>
+            <td style="color:var(--muted)">Blocked — Claude must rename or merge</td>
+          </tr>
+          <tr>
+            <td>Move fails (permissions, locked file)</td>
+            <td><code>report.md</code></td>
+            <td style="color:var(--exit2);font-weight:700">2</td>
+            <td style="color:var(--muted)">Blocked — filesystem error</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+
+    <div class="card-grid" style="margin-top:16px">
+      <div class="card pros">
+        <div class="card-title">&#10003; Pros</div>
+        <ul>
+          <li><div><strong>Granular control</strong><br>Three distinct severity levels in one integer</div></li>
+          <li><div><strong>Exit 1 enables self-healing</strong><br>Hook can fix a problem and inform Claude without blocking</div></li>
+          <li><div><strong>Exit 2 forces resolution</strong><br>Broken state cannot silently continue</div></li>
+          <li><div><strong>Universal interface</strong><br>Any language, any script — exit codes are standard</div></li>
+        </ul>
+      </div>
+      <div class="card cons">
+        <div class="card-title">&#10007; Cons</div>
+        <ul>
+          <li><div><strong>PostToolUse cannot prevent</strong><br>Exit 2 stops Claude's <em>next</em> action; the wrong write already happened</div></li>
+          <li><div><strong>Non-obvious semantics</strong><br><code>1</code> means "error" in Unix convention; here it means "non-blocking info"</div></li>
+          <li><div><strong>No structured payload</strong><br>Output is plain text — no machine-readable error type or metadata</div></li>
+          <li><div><strong>Silent exit 0 hides bugs</strong><br>A crashing hook that defaults to 0 will never be noticed</div></li>
+        </ul>
+      </div>
+    </div>
+  </section>
+
+  <!-- Comparison -->
+  <section id="comparison">
+    <div class="section-tag" style="color:var(--blue)">Side-by-Side</div>
+    <h2>Comparison</h2>
+    <h3>All four approaches on one grid</h3>
+
+    <div class="table-wrap">
+      <table>
+        <thead>
+          <tr>
+            <th>Attribute</th>
+            <th>CLAUDE.md</th>
+            <th>/create-doc Skill</th>
+            <th>PostToolUse Hook</th>
+            <th>Exit Codes</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td>Layer</td>
+            <td>Intent</td>
+            <td>Pattern</td>
+            <td>Enforcement</td>
+            <td>Signalling</td>
+          </tr>
+          <tr>
+            <td>When it acts</td>
+            <td>Session start</td>
+            <td>On invocation</td>
+            <td>After every Write</td>
+            <td>Inside hook</td>
+          </tr>
+          <tr>
+            <td>Enforcement?</td>
+            <td><span class="no-pill">No</span></td>
+            <td><span class="partial-pill">Opt-in</span></td>
+            <td><span class="yes-pill">Yes — automatic</span></td>
+            <td><span class="yes-pill">Yes — blocking</span></td>
+          </tr>
+          <tr>
+            <td>Catches all writes?</td>
+            <td><span class="no-pill">No</span></td>
+            <td><span class="no-pill">No</span></td>
+            <td><span class="yes-pill">Yes</span></td>
+            <td><span class="yes-pill">Yes</span></td>
+          </tr>
+          <tr>
+            <td>Self-healing?</td>
+            <td><span class="no-pill">No</span></td>
+            <td><span class="no-pill">No</span></td>
+            <td><span class="yes-pill">Yes (exit 1)</span></td>
+            <td><span class="partial-pill">Depends on hook</span></td>
+          </tr>
+          <tr>
+            <td>Requires restart?</td>
+            <td><span class="partial-pill">Yes (session)</span></td>
+            <td><span class="partial-pill">Yes (session)</span></td>
+            <td><span class="yes-pill">No</span></td>
+            <td><span class="yes-pill">No</span></td>
+          </tr>
+          <tr>
+            <td>Complexity</td>
+            <td>Minimal</td>
+            <td>Low</td>
+            <td>Medium</td>
+            <td>Medium</td>
+          </tr>
+          <tr>
+            <td>Portability</td>
+            <td>Any OS</td>
+            <td>Any OS</td>
+            <td>Windows (.ps1)</td>
+            <td>Any OS</td>
+          </tr>
+          <tr>
+            <td>Version-controlled?</td>
+            <td><span class="yes-pill">Yes</span></td>
+            <td><span class="yes-pill">Yes</span></td>
+            <td><span class="yes-pill">Yes</span></td>
+            <td><span class="yes-pill">Yes</span></td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+  <!-- Defence in depth -->
+  <section id="defence">
+    <div class="section-tag" style="color:var(--accent)">Architecture</div>
+    <h2>Defence in Depth</h2>
+    <h3>Each layer handles what the previous one misses</h3>
+
+    <div class="defence-diagram">
+      <div class="defence-col dc1">
+        <div class="defence-icon">📄</div>
+        <div class="defence-layer">Layer 1</div>
+        <div class="defence-name">CLAUDE.md</div>
+        <div class="defence-desc">Sets intent at session start. Free, fast, zero infrastructure.</div>
+        <div class="miss-note">Misses: <span>mid-session drift, direct writes</span></div>
+      </div>
+      <div class="defence-col dc2">
+        <div class="defence-icon">⚡</div>
+        <div class="defence-layer">Layer 2</div>
+        <div class="defence-name">/create-doc</div>
+        <div class="defence-desc">Bakes correct path into a repeatable slash command pattern.</div>
+        <div class="miss-note">Misses: <span>writes that bypass the skill</span></div>
+      </div>
+      <div class="defence-col dc3">
+        <div class="defence-icon">🪝</div>
+        <div class="defence-layer">Layer 3</div>
+        <div class="defence-name">PostToolUse</div>
+        <div class="defence-desc">Intercepts every Write and auto-moves misplaced files.</div>
+        <div class="miss-note">Misses: <span>nothing — catches all writes</span></div>
+      </div>
+      <div class="defence-col dc4">
+        <div class="defence-icon">🔌</div>
+        <div class="defence-layer">Layer 4</div>
+        <div class="defence-name">Exit 0/1/2</div>
+        <div class="defence-desc">Controls Claude's response: pass, inform, or block and fix.</div>
+        <div class="miss-note">Misses: <span>nothing — all cases handled</span></div>
+      </div>
+    </div>
+
+    <p style="margin-top:8px">No single layer is sufficient on its own. Together they form a <strong>defence-in-depth</strong> strategy where each layer catches what the previous one misses:</p>
+
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-top:16px">
+      <div class="card" style="padding:16px 20px">
+        <div style="font-size:13px;font-weight:700;color:var(--red);margin-bottom:8px">Without any one layer</div>
+        <ul style="list-style:none;font-size:13px;color:var(--muted);display:flex;flex-direction:column;gap:6px">
+          <li>❌ No CLAUDE.md → Claude has no baseline intent</li>
+          <li>❌ No skill → documentation placement is ad-hoc</li>
+          <li>❌ No hook → violations that slip through are permanent</li>
+          <li>❌ No exit codes → hook cannot communicate outcome</li>
+        </ul>
+      </div>
+      <div class="card" style="padding:16px 20px">
+        <div style="font-size:13px;font-weight:700;color:var(--green);margin-bottom:8px">With all four layers</div>
+        <ul style="list-style:none;font-size:13px;color:var(--muted);display:flex;flex-direction:column;gap:6px">
+          <li>✓ Intent set → Claude defaults to the right behaviour</li>
+          <li>✓ Skill → documentation has a reliable, consistent path</li>
+          <li>✓ Hook → any escape from the pattern is caught and repaired</li>
+          <li>✓ Exit codes → Claude knows what happened and can react</li>
+        </ul>
+      </div>
+    </div>
+  </section>
+
+  <!-- Takeaways -->
+  <section id="takeaways">
+    <div class="section-tag" style="color:var(--yellow)">Summary</div>
+    <h2>Key Takeaways</h2>
+    <h3>Five things to remember from this walkthrough</h3>
+
+    <div class="takeaways">
+      <div class="takeaway">
+        <div class="takeaway-num">1</div>
+        <div class="takeaway-body">
+          <strong>CLAUDE.md is the foundation</strong>
+          <p>Always write your rules here first. It's free, fast, and shapes Claude's default behaviour for the entire session without any tooling.</p>
+        </div>
+      </div>
+      <div class="takeaway">
+        <div class="takeaway-num">2</div>
+        <div class="takeaway-body">
+          <strong>Skills standardise how, not just what</strong>
+          <p>Use skills when a repeatable workflow needs to be enforced by convention — they make the right way the easy way.</p>
+        </div>
+      </div>
+      <div class="takeaway">
+        <div class="takeaway-num">3</div>
+        <div class="takeaway-body">
+          <strong>Hooks are the safety net</strong>
+          <p>They enforce rules at the filesystem level regardless of how Claude or the user triggered a write. The skill can be bypassed; the hook cannot.</p>
+        </div>
+      </div>
+      <div class="takeaway">
+        <div class="takeaway-num">4</div>
+        <div class="takeaway-body">
+          <strong>Match exit code to impact</strong>
+          <p>Exit 0 = nothing to say. Exit 1 = fixed it, FYI. Exit 2 = broken, you must act. Don't use 2 when 1 is enough — unnecessary blocks slow Claude down.</p>
+        </div>
+      </div>
+      <div class="takeaway">
+        <div class="takeaway-num">5</div>
+        <div class="takeaway-body">
+          <strong>The layers are complementary, not alternatives</strong>
+          <p>Intent without enforcement is a suggestion. Enforcement without intent is brittle. Signalling without enforcement is noise. All four together create a robust system.</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Files -->
+  <section id="files">
+    <div class="section-tag" style="color:var(--muted)">Reference</div>
+    <h2>File Reference</h2>
+    <h3>Every file involved in this implementation</h3>
+
+    <div class="file-ref">
+      <div class="file-ref-row">
+        <div class="file-ref-path">CLAUDE.md</div>
+        <div class="file-ref-role">Natural language rule — session-level intent (Layer 1)</div>
+      </div>
+      <div class="file-ref-row">
+        <div class="file-ref-path">.claude/skills/create-doc/SKILL.md</div>
+        <div class="file-ref-role">Skill definition — registers the /create-doc slash command (Layer 2)</div>
+      </div>
+      <div class="file-ref-row">
+        <div class="file-ref-path">.claude/settings.json</div>
+        <div class="file-ref-role">Hook registration — wires PostToolUse to the enforcement script (Layer 3)</div>
+      </div>
+      <div class="file-ref-row">
+        <div class="file-ref-path">.claude/hooks/check-md-placement.ps1</div>
+        <div class="file-ref-role">Hook script — move enforcement with exit 0/1/2 logic (Layers 3 &amp; 4)</div>
+      </div>
+      <div class="file-ref-row">
+        <div class="file-ref-path">docs/create-doc-skill.md</div>
+        <div class="file-ref-role">Deep dive: the create-doc skill architecture and usage</div>
+      </div>
+      <div class="file-ref-row">
+        <div class="file-ref-path">docs/claude-code-hooks.md</div>
+        <div class="file-ref-role">Deep dive: hooks lifecycle, exit codes, and the enforcement flow</div>
+      </div>
+      <div class="file-ref-row">
+        <div class="file-ref-path">docs/doc-placement-enforcement-presentation.md</div>
+        <div class="file-ref-role">This presentation in markdown format</div>
+      </div>
+    </div>
+  </section>
+
+</main>
+
+<script>
+  // Highlight active nav link on scroll
+  const sections = document.querySelectorAll('section[id]');
+  const links = document.querySelectorAll('nav a');
+
+  const observer = new IntersectionObserver(entries => {
+    entries.forEach(entry => {
+      if (entry.isIntersecting) {
+        links.forEach(l => l.classList.remove('active'));
+        const active = document.querySelector(`nav a[href="#${entry.target.id}"]`);
+        if (active) active.classList.add('active');
+      }
+    });
+  }, { threshold: 0.35 });
+
+  sections.forEach(s => observer.observe(s));
+</script>
+</body>
+</html>

@@ -1,0 +1,15 @@
+{
+  "hooks": {
+    "PostToolUse": [
+      {
+        "matcher": "Write",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "powershell -NonInteractive -NoProfile -File .claude/hooks/check-md-placement.ps1"
+          }
+        ]
+      }
+    ]
+  }
+}
